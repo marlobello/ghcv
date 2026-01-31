@@ -11,11 +11,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.marlobell.ghcv.data.HealthConnectManager
-import com.marlobell.ghcv.data.repository.HealthConnectRepository
+import com.marlobell.ghcv.ui.navigation.Screen
+import com.marlobell.ghcv.ui.navigation.bottomNavItems
+import com.marlobell.ghcv.ui.screens.CurrentScreen
+import com.marlobell.ghcv.ui.screens.HistoricalScreen
+import com.marlobell.ghcv.ui.screens.TrendsScreen
 import com.marlobell.ghcv.ui.theme.GhcvTheme
-import com.marlobell.ghcv.ui.viewmodel.CurrentViewModel
 
 class MainActivity : ComponentActivity() {
     
@@ -53,12 +60,14 @@ fun HealthConnectApp(healthConnectManager: HealthConnectManager) {
         permissionsGranted.value = granted.containsAll(HealthConnectManager.PERMISSIONS)
     }
     
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-        when {
-            !healthConnectAvailable.value -> {
+    when {
+        !healthConnectAvailable.value -> {
+            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                 HealthConnectUnavailableScreen(Modifier.padding(innerPadding))
             }
-            !permissionsGranted.value -> {
+        }
+        !permissionsGranted.value -> {
+            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                 PermissionRequestScreen(
                     onRequestPermissions = {
                         permissionLauncher.launch(HealthConnectManager.PERMISSIONS)
@@ -66,11 +75,56 @@ fun HealthConnectApp(healthConnectManager: HealthConnectManager) {
                     modifier = Modifier.padding(innerPadding)
                 )
             }
-            else -> {
-                CurrentHealthScreen(
-                    healthConnectManager = healthConnectManager,
-                    modifier = Modifier.padding(innerPadding)
-                )
+        }
+        else -> {
+            MainNavigationScreen(healthConnectManager)
+        }
+    }
+}
+
+@Composable
+fun MainNavigationScreen(healthConnectManager: HealthConnectManager) {
+    val navController = rememberNavController()
+    
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        bottomBar = {
+            NavigationBar {
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentDestination = navBackStackEntry?.destination
+                
+                bottomNavItems.forEach { screen ->
+                    NavigationBarItem(
+                        icon = { Icon(screen.icon, contentDescription = screen.title) },
+                        label = { Text(screen.title) },
+                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                        onClick = {
+                            navController.navigate(screen.route) {
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = Screen.Current.route,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable(Screen.Current.route) {
+                CurrentScreen(healthConnectManager)
+            }
+            composable(Screen.Historical.route) {
+                HistoricalScreen(healthConnectManager)
+            }
+            composable(Screen.Trends.route) {
+                TrendsScreen(healthConnectManager)
             }
         }
     }
@@ -117,99 +171,6 @@ fun PermissionRequestScreen(
         Spacer(modifier = Modifier.height(32.dp))
         Button(onClick = onRequestPermissions) {
             Text("Grant Permissions")
-        }
-    }
-}
-
-@Composable
-fun CurrentHealthScreen(
-    healthConnectManager: HealthConnectManager,
-    modifier: Modifier = Modifier
-) {
-    val repository = remember {
-        HealthConnectRepository(healthConnectManager.getClient())
-    }
-    
-    val viewModel: CurrentViewModel = viewModel(
-        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                @Suppress("UNCHECKED_CAST")
-                return CurrentViewModel(repository, healthConnectManager) as T
-            }
-        }
-    )
-    
-    val uiState by viewModel.uiState.collectAsState()
-    
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = "Current Health Data",
-            style = MaterialTheme.typography.headlineMedium
-        )
-        
-        if (uiState.isLoading) {
-            CircularProgressIndicator()
-        } else if (uiState.error != null) {
-            Text(
-                text = "Error: ${uiState.error}",
-                color = MaterialTheme.colorScheme.error
-            )
-            Button(onClick = { viewModel.refresh() }) {
-                Text("Retry")
-            }
-        } else {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Steps Today",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = "${uiState.steps}",
-                        style = MaterialTheme.typography.headlineLarge
-                    )
-                }
-            }
-            
-            uiState.heartRate?.let { hr ->
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Latest Heart Rate",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = "$hr bpm",
-                            style = MaterialTheme.typography.headlineLarge
-                        )
-                    }
-                }
-            }
-            
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Active Calories",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = "${String.format("%.0f", uiState.activeCalories)} kcal",
-                        style = MaterialTheme.typography.headlineLarge
-                    )
-                }
-            }
-            
-            Button(
-                onClick = { viewModel.refresh() },
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            ) {
-                Text("Refresh")
-            }
         }
     }
 }
