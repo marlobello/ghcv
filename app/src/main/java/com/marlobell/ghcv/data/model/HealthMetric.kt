@@ -128,3 +128,22 @@ data class RestingHeartRateMetric(
     override val value: Double = bpm.toDouble()
     override val unit: String = "bpm"
 }
+
+data class RespiratoryRateMetric(
+    override val timestamp: Instant,
+    val breathsPerMinute: Double
+) : HealthMetric() {
+    override val value: Double = breathsPerMinute
+    override val unit: String = "breaths/min"
+}
+
+data class VitalStats<T>(
+    val latest: T? = null,
+    val latestTimestamp: Instant? = null,
+    val dailyAvg: Double? = null,
+    val dailyMin: Double? = null,
+    val dailyMax: Double? = null,
+    val readingCount: Int = 0
+) {
+    val hasData: Boolean get() = latest != null
+}

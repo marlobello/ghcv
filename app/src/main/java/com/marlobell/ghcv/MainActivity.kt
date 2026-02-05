@@ -1,15 +1,19 @@
 package com.marlobell.ghcv
 
+import android.content.ActivityNotFoundException
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
@@ -31,6 +35,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        Log.d("GHCV", "MainActivity onCreate")
         healthConnectManager = HealthConnectManager(this)
         
         enableEdgeToEdge()
@@ -44,39 +49,78 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun HealthConnectApp(healthConnectManager: HealthConnectManager) {
-    val healthConnectAvailable = remember { mutableStateOf(false) }
-    val permissionsGranted = remember { mutableStateOf(false) }
+    var healthConnectAvailable by remember { mutableStateOf(false) }
+    var permissionsGranted by remember { mutableStateOf(false) }
+    var checkingPermissions by remember { mutableStateOf(true) }
+    val context = LocalContext.current
     
     LaunchedEffect(Unit) {
-        healthConnectAvailable.value = healthConnectManager.checkAvailability()
-        if (healthConnectAvailable.value) {
-            permissionsGranted.value = healthConnectManager.hasAllPermissions()
+        Log.d("GHCV", "Checking Health Connect availability")
+        healthConnectAvailable = healthConnectManager.checkAvailability()
+        Log.d("GHCV", "Health Connect available: $healthConnectAvailable")
+        if (healthConnectAvailable) {
+            // Try to register with Health Connect first
+            Log.d("GHCV", "Attempting to register with Health Connect...")
+            healthConnectManager.triggerHealthConnectRegistration()
+            
+            // Then check permissions
+            permissionsGranted = healthConnectManager.hasAllPermissions()
+            Log.d("GHCV", "Permissions granted: $permissionsGranted")
         }
+        checkingPermissions = false
     }
     
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = healthConnectManager.createPermissionRequestContract()
     ) { granted ->
-        permissionsGranted.value = granted.containsAll(HealthConnectManager.PERMISSIONS)
+        Log.d("GHCV", "Permission launcher result: $granted")
+        // After permission request, recheck if all permissions are granted
+        checkingPermissions = true
+    }
+    
+    val manualLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        Log.d("GHCV", "Manual launcher result code: ${result.resultCode}")
+        checkingPermissions = true
+    }
+    
+    // Recheck permissions after permission launcher completes
+    LaunchedEffect(checkingPermissions) {
+        if (checkingPermissions && healthConnectAvailable) {
+            Log.d("GHCV", "Rechecking permissions...")
+            permissionsGranted = healthConnectManager.hasAllPermissions()
+            Log.d("GHCV", "Permissions now: $permissionsGranted")
+            checkingPermissions = false
+        }
     }
     
     when {
-        !healthConnectAvailable.value -> {
+        !healthConnectAvailable -> {
+            Log.d("GHCV", "Showing unavailable screen")
             Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                 HealthConnectUnavailableScreen(Modifier.padding(innerPadding))
             }
         }
-        !permissionsGranted.value -> {
+        !permissionsGranted -> {
+            Log.d("GHCV", "Showing permission request screen")
             Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                 PermissionRequestScreen(
                     onRequestPermissions = {
-                        permissionLauncher.launch(HealthConnectManager.PERMISSIONS)
+                        Log.d("GHCV", "Grant Permissions button clicked!")
+                        try {
+                            permissionLauncher.launch(HealthConnectManager.PERMISSIONS)
+                            Log.d("GHCV", "Permission launcher launched successfully")
+                        } catch (e: Exception) {
+                            Log.e("GHCV", "Error launching permission request", e)
+                        }
                     },
                     modifier = Modifier.padding(innerPadding)
                 )
             }
         }
         else -> {
+            Log.d("GHCV", "Showing main navigation")
             MainNavigationScreen(healthConnectManager)
         }
     }
@@ -166,7 +210,8 @@ fun PermissionRequestScreen(
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "This app needs permission to read your health data from Health Connect.",
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
         Spacer(modifier = Modifier.height(32.dp))
         Button(onClick = onRequestPermissions) {

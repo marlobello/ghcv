@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,6 +26,7 @@ import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,7 +87,7 @@ fun HistoricalScreen(
                     )
                 }
                 Icon(
-                    imageVector = Icons.Default.DateRange,
+                    imageVector = Icons.Filled.DateRange,
                     contentDescription = "Select date"
                 )
             }
@@ -109,7 +111,7 @@ fun HistoricalScreen(
             // Steps Card
             ExpandableMetricCard(
                 title = "Steps",
-                icon = Icons.Default.DirectionsWalk,
+                icon = Icons.AutoMirrored.Filled.DirectionsWalk,
                 value = "${uiState.steps}",
                 isExpanded = uiState.expandedSections.contains("steps"),
                 onToggle = { viewModel.toggleSection("steps") },
@@ -130,8 +132,8 @@ fun HistoricalScreen(
             if (uiState.heartRateData.isNotEmpty()) {
                 ExpandableMetricCard(
                     title = "Heart Rate",
-                    icon = Icons.Default.Favorite,
-                    value = "${String.format("%.1f", uiState.averageHeartRate)} bpm",
+                    icon = Icons.Filled.Favorite,
+                    value = "${String.format(Locale.US, "%.1f", uiState.averageHeartRate)} bpm",
                     subtitle = "${uiState.minHeartRate}-${uiState.maxHeartRate} bpm range",
                     isExpanded = uiState.expandedSections.contains("heartrate"),
                     onToggle = { viewModel.toggleSection("heartrate") }
@@ -154,7 +156,7 @@ fun HistoricalScreen(
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                             StatItem("Min", "${uiState.minHeartRate}")
-                            StatItem("Avg", String.format("%.0f", uiState.averageHeartRate))
+                            StatItem("Avg", String.format(Locale.US, "%.0f", uiState.averageHeartRate))
                             StatItem("Max", "${uiState.maxHeartRate}")
                         }
                     }
@@ -168,7 +170,7 @@ fun HistoricalScreen(
                 
                 ExpandableMetricCard(
                     title = "Sleep",
-                    icon = Icons.Default.Bedtime,
+                    icon = Icons.Filled.Bedtime,
                     value = "${hours}h ${minutes}m",
                     isExpanded = uiState.expandedSections.contains("sleep"),
                     onToggle = { viewModel.toggleSection("sleep") }
@@ -231,7 +233,7 @@ fun HistoricalScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Place,
+                                imageVector = Icons.Filled.Place,
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -241,7 +243,7 @@ fun HistoricalScreen(
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Text(
-                                    text = "${String.format("%.2f", uiState.distance / 1000)} km",
+                                    text = "${String.format(Locale.US, "%.2f", uiState.distance / 1000)} km",
                                     style = MaterialTheme.typography.headlineSmall
                                 )
                             }
@@ -265,7 +267,7 @@ fun HistoricalScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Default.FitnessCenter,
+                                imageVector = Icons.Filled.FitnessCenter,
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -370,7 +372,7 @@ fun ExpandableMetricCard(
                     }
                 }
                 Icon(
-                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                     contentDescription = if (isExpanded) "Collapse" else "Expand"
                 )
             }
@@ -399,7 +401,7 @@ fun HeartRateChart(
         return
     }
     
-    val modelProducer = remember { CartesianChartModelProducer.build() }
+    val modelProducer = remember { CartesianChartModelProducer() }
     
     LaunchedEffect(heartRateData) {
         val sortedData = heartRateData.sortedBy { it.timestamp }
@@ -408,7 +410,7 @@ fun HeartRateChart(
         }
         val bpmValues = sortedData.map { it.bpm.toFloat() }
         
-        modelProducer.tryRunTransaction {
+        modelProducer.runTransaction {
             lineSeries { series(hourOfDay, bpmValues) }
         }
     }

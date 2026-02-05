@@ -244,4 +244,240 @@ class HealthConnectRepository(
             )
         }.sortedBy { it.timestamp }
     }
+
+    suspend fun getLatestBloodPressure(): BloodPressureMetric? {
+        val endTime = Instant.now()
+        val startTime = endTime.minus(7, ChronoUnit.DAYS)
+
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = BloodPressureRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+            )
+        )
+
+        val latest = response.records.maxByOrNull { it.time }
+        return latest?.let {
+            BloodPressureMetric(
+                timestamp = it.time,
+                systolic = it.systolic.inMillimetersOfMercury,
+                diastolic = it.diastolic.inMillimetersOfMercury
+            )
+        }
+    }
+
+    suspend fun getTodayBloodPressure(): List<BloodPressureMetric> {
+        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val endOfDay = Instant.now()
+
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = BloodPressureRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+            )
+        )
+
+        return response.records.map {
+            BloodPressureMetric(
+                timestamp = it.time,
+                systolic = it.systolic.inMillimetersOfMercury,
+                diastolic = it.diastolic.inMillimetersOfMercury
+            )
+        }
+    }
+
+    suspend fun getLatestBloodGlucose(): BloodGlucoseMetric? {
+        val endTime = Instant.now()
+        val startTime = endTime.minus(7, ChronoUnit.DAYS)
+
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = BloodGlucoseRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+            )
+        )
+
+        val latest = response.records.maxByOrNull { it.time }
+        return latest?.let {
+            BloodGlucoseMetric(
+                timestamp = it.time,
+                mgDl = it.level.inMilligramsPerDeciliter
+            )
+        }
+    }
+
+    suspend fun getTodayBloodGlucose(): List<BloodGlucoseMetric> {
+        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val endOfDay = Instant.now()
+
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = BloodGlucoseRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+            )
+        )
+
+        return response.records.map {
+            BloodGlucoseMetric(
+                timestamp = it.time,
+                mgDl = it.level.inMilligramsPerDeciliter
+            )
+        }
+    }
+
+    suspend fun getLatestBodyTemperature(): BodyTemperatureMetric? {
+        val endTime = Instant.now()
+        val startTime = endTime.minus(7, ChronoUnit.DAYS)
+
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = BodyTemperatureRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+            )
+        )
+
+        val latest = response.records.maxByOrNull { it.time }
+        return latest?.let {
+            BodyTemperatureMetric(
+                timestamp = it.time,
+                celsius = it.temperature.inCelsius
+            )
+        }
+    }
+
+    suspend fun getTodayBodyTemperature(): List<BodyTemperatureMetric> {
+        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val endOfDay = Instant.now()
+
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = BodyTemperatureRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+            )
+        )
+
+        return response.records.map {
+            BodyTemperatureMetric(
+                timestamp = it.time,
+                celsius = it.temperature.inCelsius
+            )
+        }
+    }
+
+    suspend fun getLatestOxygenSaturation(): OxygenSaturationMetric? {
+        val endTime = Instant.now()
+        val startTime = endTime.minus(7, ChronoUnit.DAYS)
+
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = OxygenSaturationRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+            )
+        )
+
+        val latest = response.records.maxByOrNull { it.time }
+        return latest?.let {
+            OxygenSaturationMetric(
+                timestamp = it.time,
+                percentage = it.percentage.value
+            )
+        }
+    }
+
+    suspend fun getTodayOxygenSaturation(): List<OxygenSaturationMetric> {
+        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val endOfDay = Instant.now()
+
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = OxygenSaturationRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+            )
+        )
+
+        return response.records.map {
+            OxygenSaturationMetric(
+                timestamp = it.time,
+                percentage = it.percentage.value
+            )
+        }
+    }
+
+    suspend fun getLatestRestingHeartRate(): RestingHeartRateMetric? {
+        val endTime = Instant.now()
+        val startTime = endTime.minus(7, ChronoUnit.DAYS)
+
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = RestingHeartRateRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+            )
+        )
+
+        val latest = response.records.maxByOrNull { it.time }
+        return latest?.let {
+            RestingHeartRateMetric(
+                timestamp = it.time,
+                bpm = it.beatsPerMinute
+            )
+        }
+    }
+
+    suspend fun getTodayRestingHeartRate(): List<RestingHeartRateMetric> {
+        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val endOfDay = Instant.now()
+
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = RestingHeartRateRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+            )
+        )
+
+        return response.records.map {
+            RestingHeartRateMetric(
+                timestamp = it.time,
+                bpm = it.beatsPerMinute
+            )
+        }
+    }
+
+    suspend fun getLatestRespiratoryRate(): RespiratoryRateMetric? {
+        val endTime = Instant.now()
+        val startTime = endTime.minus(7, ChronoUnit.DAYS)
+
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = RespiratoryRateRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+            )
+        )
+
+        val latest = response.records.maxByOrNull { it.time }
+        return latest?.let {
+            RespiratoryRateMetric(
+                timestamp = it.time,
+                breathsPerMinute = it.rate
+            )
+        }
+    }
+
+    suspend fun getTodayRespiratoryRate(): List<RespiratoryRateMetric> {
+        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val endOfDay = Instant.now()
+
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = RespiratoryRateRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+            )
+        )
+
+        return response.records.map {
+            RespiratoryRateMetric(
+                timestamp = it.time,
+                breathsPerMinute = it.rate
+            )
+        }
+    }
 }

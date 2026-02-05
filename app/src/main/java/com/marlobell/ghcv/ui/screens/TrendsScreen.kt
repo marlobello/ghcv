@@ -81,19 +81,22 @@ fun TrendsScreen(
                 selected = uiState.selectedMetric == "steps",
                 onClick = { viewModel.selectMetric("steps") },
                 label = { Text("Steps") },
-                leadingIcon = { Icon(Icons.Default.DirectionsWalk, null, Modifier.size(18.dp)) }
+                leadingIcon = { 
+                    @Suppress("DEPRECATION")
+                    Icon(Icons.Filled.DirectionsWalk, null, Modifier.size(18.dp)) 
+                }
             )
             FilterChip(
                 selected = uiState.selectedMetric == "heartrate",
                 onClick = { viewModel.selectMetric("heartrate") },
                 label = { Text("Heart Rate") },
-                leadingIcon = { Icon(Icons.Default.Favorite, null, Modifier.size(18.dp)) }
+                leadingIcon = { Icon(Icons.Filled.Favorite, null, Modifier.size(18.dp)) }
             )
             FilterChip(
                 selected = uiState.selectedMetric == "sleep",
                 onClick = { viewModel.selectMetric("sleep") },
                 label = { Text("Sleep") },
-                leadingIcon = { Icon(Icons.Default.Bedtime, null, Modifier.size(18.dp)) }
+                leadingIcon = { Icon(Icons.Filled.Bedtime, null, Modifier.size(18.dp)) }
             )
         }
         
@@ -268,13 +271,13 @@ fun StepsChart(
     data: List<Pair<LocalDate, Long>>,
     modifier: Modifier = Modifier
 ) {
-    val modelProducer = remember { CartesianChartModelProducer.build() }
+    val modelProducer = remember { CartesianChartModelProducer() }
     
     LaunchedEffect(data) {
         val xValues = data.indices.map { it.toFloat() }
         val yValues = data.map { it.second.toFloat() }
         
-        modelProducer.tryRunTransaction {
+        modelProducer.runTransaction {
             columnSeries { series(xValues, yValues) }
         }
     }
@@ -295,13 +298,13 @@ fun HeartRateTrendChart(
     data: List<Pair<LocalDate, Double>>,
     modifier: Modifier = Modifier
 ) {
-    val modelProducer = remember { CartesianChartModelProducer.build() }
+    val modelProducer = remember { CartesianChartModelProducer() }
     
     LaunchedEffect(data) {
         val xValues = data.indices.map { it.toFloat() }
         val yValues = data.map { it.second.toFloat() }
         
-        modelProducer.tryRunTransaction {
+        modelProducer.runTransaction {
             lineSeries { series(xValues, yValues) }
         }
     }
@@ -322,13 +325,13 @@ fun SleepChart(
     data: List<Pair<LocalDate, Long>>,
     modifier: Modifier = Modifier
 ) {
-    val modelProducer = remember { CartesianChartModelProducer.build() }
+    val modelProducer = remember { CartesianChartModelProducer() }
     
     LaunchedEffect(data) {
         val xValues = data.indices.map { it.toFloat() }
         val yValues = data.map { (it.second / 60).toFloat() } // Convert to hours
         
-        modelProducer.tryRunTransaction {
+        modelProducer.runTransaction {
             columnSeries { series(xValues, yValues) }
         }
     }
@@ -375,7 +378,7 @@ fun EmptyStateCard(message: String) {
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
-                    imageVector = Icons.Default.Info,
+                    imageVector = Icons.Filled.Info,
                     contentDescription = null,
                     modifier = Modifier.size(48.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
