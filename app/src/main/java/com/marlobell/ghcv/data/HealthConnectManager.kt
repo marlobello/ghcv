@@ -89,6 +89,42 @@ class HealthConnectManager(private val context: Context) {
             false
         }
     }
+
+    /**
+     * Checks if permission is granted for a specific record type.
+     *
+     * @param recordClass The record type to check (e.g., StepsRecord::class)
+     * @return true if permission is granted for this record type
+     */
+    suspend fun hasPermissionFor(recordClass: KClass<out Record>): Boolean {
+        return try {
+            val permission = HealthPermission.getReadPermission(recordClass)
+            val granted = healthConnectClient.permissionController.getGrantedPermissions()
+            granted.contains(permission)
+        } catch (e: Exception) {
+            Log.e("GHCV", "Error checking permission for ${recordClass.simpleName}", e)
+            false
+        }
+    }
+    
+    /**
+     * Checks permissions for multiple record types at once.
+     *
+     * @param recordClasses Set of record types to check
+     * @return Map of record class to permission status
+     */
+    suspend fun getPermissionsStatus(recordClasses: Set<KClass<out Record>>): Map<KClass<out Record>, Boolean> {
+        return try {
+            val granted = healthConnectClient.permissionController.getGrantedPermissions()
+            recordClasses.associateWith { recordClass ->
+                val permission = HealthPermission.getReadPermission(recordClass)
+                granted.contains(permission)
+            }
+        } catch (e: Exception) {
+            Log.e("GHCV", "Error checking permissions status", e)
+            recordClasses.associateWith { false }
+        }
+    }
     
     /**
      * Checks if background read permission is available as a feature and granted.

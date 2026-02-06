@@ -13,6 +13,7 @@ import com.marlobell.ghcv.data.model.VitalStats
 import com.marlobell.ghcv.ui.UiState
 import androidx.health.connect.client.changes.Change
 import androidx.health.connect.client.records.*
+import com.marlobell.ghcv.ui.model.MetricInfo
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +42,11 @@ data class CurrentHealthData(
     val oxygenSaturation: VitalStats<Double> = VitalStats(),
     val restingHeartRate: VitalStats<Long> = VitalStats(),
     val respiratoryRate: VitalStats<Double> = VitalStats(),
-    val lastUpdated: Instant? = null
+    val lastUpdated: Instant? = null,
+    // Categorized metrics for UI sections
+    val metricsWithData: List<MetricInfo> = emptyList(),
+    val metricsNoPermission: List<MetricInfo> = emptyList(),
+    val metricsNoData: List<MetricInfo> = emptyList()
 ) {
     val stepsTrend: Int
         get() = if (sevenDayAvgSteps > 0) {
