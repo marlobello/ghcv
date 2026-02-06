@@ -2,6 +2,9 @@ package com.marlobell.ghcv.ui.viewmodel
 
 import android.os.RemoteException
 import android.util.Log
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.marlobell.ghcv.data.ChangesTokenStorage
@@ -435,7 +438,10 @@ class CurrentViewModel(
                     restingHeartRate = restingHeartRateStats,
                     respiratoryRate = respiratoryRateStats,
                     lastUpdated = Instant.now()
-                )
+                ).let { data ->
+                    // Categorize metrics for UI sections
+                    categorizeMetrics(data)
+                }
                 
                 // On initial load, get a changes token for future differential syncs
                 if (isInitialLoad && ::changesTokenStorage.isInitialized) {
@@ -534,6 +540,273 @@ class CurrentViewModel(
         
         // For now, any changes trigger a full refresh
         // In the future, we could be more granular and only refresh affected metrics
+    }
+
+    /**
+     * Categorizes metrics into three lists based on availability.
+     * Returns updated CurrentHealthData with categorized metrics.
+     */
+    private suspend fun categorizeMetrics(data: CurrentHealthData): CurrentHealthData {
+        val metricsWithData = mutableListOf<com.marlobell.ghcv.ui.model.MetricInfo>()
+        val metricsNoPermission = mutableListOf<com.marlobell.ghcv.ui.model.MetricInfo>()
+        val metricsNoData = mutableListOf<com.marlobell.ghcv.ui.model.MetricInfo>()
+        
+        // Check permissions for each metric type
+        val permissionStatus = healthConnectManager.getPermissionsStatus(setOf(
+            StepsRecord::class,
+            HeartRateRecord::class,
+            SleepSessionRecord::class,
+            ActiveCaloriesBurnedRecord::class,
+            BloodPressureRecord::class,
+            BloodGlucoseRecord::class,
+            BodyTemperatureRecord::class,
+            OxygenSaturationRecord::class,
+            RestingHeartRateRecord::class,
+            RespiratoryRateRecord::class
+        ))
+        
+        // Helper function to get icon for metric type
+        fun getIconForMetric(id: String): androidx.compose.ui.graphics.vector.ImageVector {
+            return when (id) {
+                "steps" -> androidx.compose.material.icons.Icons.AutoMirrored.Filled.DirectionsWalk
+                "heart_rate" -> androidx.compose.material.icons.Icons.Filled.Favorite
+                "sleep" -> androidx.compose.material.icons.Icons.Filled.Bedtime
+                "active_calories" -> androidx.compose.material.icons.Icons.Filled.LocalFireDepartment
+                "blood_pressure" -> androidx.compose.material.icons.Icons.Filled.Favorite
+                "blood_glucose" -> androidx.compose.material.icons.Icons.Filled.Bloodtype
+                "body_temperature" -> androidx.compose.material.icons.Icons.Filled.Thermostat
+                "oxygen_saturation" -> androidx.compose.material.icons.Icons.Filled.Air
+                "resting_heart_rate" -> androidx.compose.material.icons.Icons.Filled.MonitorHeart
+                "respiratory_rate" -> androidx.compose.material.icons.Icons.Filled.Air
+                else -> androidx.compose.material.icons.Icons.Filled.HealthAndSafety
+            }
+        }
+        
+        // Categorize Steps
+        val hasStepsPermission = permissionStatus[StepsRecord::class] ?: false
+        if (hasStepsPermission) {
+            if (data.steps > 0) {
+                // Has data - will be shown in section 1 (full card already exists)
+            } else {
+                metricsNoData.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                    id = "steps",
+                    displayName = "Steps",
+                    icon = getIconForMetric("steps"),
+                    availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_DATA
+                ))
+            }
+        } else {
+            metricsNoPermission.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                id = "steps",
+                displayName = "Steps",
+                icon = getIconForMetric("steps"),
+                availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_PERMISSION
+            ))
+        }
+        
+        // Categorize Heart Rate
+        val hasHeartRatePermission = permissionStatus[HeartRateRecord::class] ?: false
+        if (hasHeartRatePermission) {
+            if (data.heartRate != null) {
+                // Has data
+            } else {
+                metricsNoData.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                    id = "heart_rate",
+                    displayName = "Heart Rate",
+                    icon = getIconForMetric("heart_rate"),
+                    availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_DATA
+                ))
+            }
+        } else {
+            metricsNoPermission.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                id = "heart_rate",
+                displayName = "Heart Rate",
+                icon = getIconForMetric("heart_rate"),
+                availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_PERMISSION
+            ))
+        }
+        
+        // Categorize Sleep
+        val hasSleepPermission = permissionStatus[SleepSessionRecord::class] ?: false
+        if (hasSleepPermission) {
+            if (data.sleepLastNight != null) {
+                // Has data
+            } else {
+                metricsNoData.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                    id = "sleep",
+                    displayName = "Sleep",
+                    icon = getIconForMetric("sleep"),
+                    availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_DATA
+                ))
+            }
+        } else {
+            metricsNoPermission.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                id = "sleep",
+                displayName = "Sleep",
+                icon = getIconForMetric("sleep"),
+                availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_PERMISSION
+            ))
+        }
+        
+        // Categorize Active Calories
+        val hasCaloriesPermission = permissionStatus[ActiveCaloriesBurnedRecord::class] ?: false
+        if (hasCaloriesPermission) {
+            if (data.activeCalories > 0) {
+                // Has data
+            } else {
+                metricsNoData.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                    id = "active_calories",
+                    displayName = "Active Calories",
+                    icon = getIconForMetric("active_calories"),
+                    availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_DATA
+                ))
+            }
+        } else {
+            metricsNoPermission.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                id = "active_calories",
+                displayName = "Active Calories",
+                icon = getIconForMetric("active_calories"),
+                availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_PERMISSION
+            ))
+        }
+        
+        // Categorize Blood Pressure
+        val hasBloodPressurePermission = permissionStatus[BloodPressureRecord::class] ?: false
+        if (hasBloodPressurePermission) {
+            if (data.bloodPressure.hasData) {
+                // Has data
+            } else {
+                metricsNoData.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                    id = "blood_pressure",
+                    displayName = "Blood Pressure",
+                    icon = getIconForMetric("blood_pressure"),
+                    availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_DATA
+                ))
+            }
+        } else {
+            metricsNoPermission.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                id = "blood_pressure",
+                displayName = "Blood Pressure",
+                icon = getIconForMetric("blood_pressure"),
+                availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_PERMISSION
+            ))
+        }
+        
+        // Categorize Blood Glucose
+        val hasBloodGlucosePermission = permissionStatus[BloodGlucoseRecord::class] ?: false
+        if (hasBloodGlucosePermission) {
+            if (data.bloodGlucose.hasData) {
+                // Has data
+            } else {
+                metricsNoData.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                    id = "blood_glucose",
+                    displayName = "Blood Glucose",
+                    icon = getIconForMetric("blood_glucose"),
+                    availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_DATA
+                ))
+            }
+        } else {
+            metricsNoPermission.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                id = "blood_glucose",
+                displayName = "Blood Glucose",
+                icon = getIconForMetric("blood_glucose"),
+                availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_PERMISSION
+            ))
+        }
+        
+        // Categorize Body Temperature
+        val hasBodyTempPermission = permissionStatus[BodyTemperatureRecord::class] ?: false
+        if (hasBodyTempPermission) {
+            if (data.bodyTemperature.hasData) {
+                // Has data
+            } else {
+                metricsNoData.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                    id = "body_temperature",
+                    displayName = "Body Temperature",
+                    icon = getIconForMetric("body_temperature"),
+                    availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_DATA
+                ))
+            }
+        } else {
+            metricsNoPermission.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                id = "body_temperature",
+                displayName = "Body Temperature",
+                icon = getIconForMetric("body_temperature"),
+                availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_PERMISSION
+            ))
+        }
+        
+        // Categorize Oxygen Saturation
+        val hasOxygenSaturationPermission = permissionStatus[OxygenSaturationRecord::class] ?: false
+        if (hasOxygenSaturationPermission) {
+            if (data.oxygenSaturation.hasData) {
+                // Has data
+            } else {
+                metricsNoData.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                    id = "oxygen_saturation",
+                    displayName = "Oxygen Saturation",
+                    icon = getIconForMetric("oxygen_saturation"),
+                    availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_DATA
+                ))
+            }
+        } else {
+            metricsNoPermission.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                id = "oxygen_saturation",
+                displayName = "Oxygen Saturation",
+                icon = getIconForMetric("oxygen_saturation"),
+                availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_PERMISSION
+            ))
+        }
+        
+        // Categorize Resting Heart Rate
+        val hasRestingHRPermission = permissionStatus[RestingHeartRateRecord::class] ?: false
+        if (hasRestingHRPermission) {
+            if (data.restingHeartRate.hasData) {
+                // Has data
+            } else {
+                metricsNoData.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                    id = "resting_heart_rate",
+                    displayName = "Resting Heart Rate",
+                    icon = getIconForMetric("resting_heart_rate"),
+                    availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_DATA
+                ))
+            }
+        } else {
+            metricsNoPermission.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                id = "resting_heart_rate",
+                displayName = "Resting Heart Rate",
+                icon = getIconForMetric("resting_heart_rate"),
+                availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_PERMISSION
+            ))
+        }
+        
+        // Categorize Respiratory Rate
+        val hasRespiratoryRatePermission = permissionStatus[RespiratoryRateRecord::class] ?: false
+        if (hasRespiratoryRatePermission) {
+            if (data.respiratoryRate.hasData) {
+                // Has data
+            } else {
+                metricsNoData.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                    id = "respiratory_rate",
+                    displayName = "Respiratory Rate",
+                    icon = getIconForMetric("respiratory_rate"),
+                    availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_DATA
+                ))
+            }
+        } else {
+            metricsNoPermission.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                id = "respiratory_rate",
+                displayName = "Respiratory Rate",
+                icon = getIconForMetric("respiratory_rate"),
+                availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_PERMISSION
+            ))
+        }
+        
+        return data.copy(
+            metricsWithData = metricsWithData,
+            metricsNoPermission = metricsNoPermission,
+            metricsNoData = metricsNoData
+        )
     }
 
     fun refresh() {
