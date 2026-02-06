@@ -233,7 +233,9 @@ class CurrentViewModel(
                 }
                 
                 val heartRate = try {
-                    repository.getLatestHeartRate()
+                    val hr = repository.getLatestHeartRate()
+                    Log.d("CurrentViewModel", "Heart rate fetched: $hr (bpm: ${hr?.bpm})")
+                    hr
                 } catch (e: Exception) {
                     Log.w("CurrentViewModel", "Failed to fetch heart rate", e)
                     null
@@ -488,11 +490,11 @@ class CurrentViewModel(
                 )
                 
                 val heartRateComp = heartRate?.bpm?.let { currentHR ->
-                    todayAvgHeartRate?.let { restingHR ->
+                    sevenDayAvgRestingHR?.let { avgRestingHR ->
                         createComparison(
                             current = currentHR.toDouble(),
-                            comparison = restingHR.toDouble(),
-                            label = "Resting HR",
+                            comparison = avgRestingHR.toDouble(),
+                            label = "7-day avg resting",
                             unit = "bpm",
                             higherIsBetter = false,  // Lower delta from resting is better
                             formatValue = { String.format(java.util.Locale.US, "%.0f", it) }
@@ -622,10 +624,12 @@ class CurrentViewModel(
                     oxygenSaturationComparison = spo2Comp,
                     restingHeartRateComparison = restingHRComp,
                     respiratoryRateComparison = respRateComp
-                ).let { data ->
-                    // Categorize metrics for UI sections
-                    categorizeMetrics(data)
-                }
+                )
+                
+                Log.d("CurrentViewModel", "Health data updated - HR in state: ${_healthData.value.heartRate}")
+                
+                // Categorize metrics for UI sections
+                categorizeMetrics(_healthData.value)
                 
                 // On initial load, get a changes token for future differential syncs
                 if (isInitialLoad && ::changesTokenStorage.isInitialized) {

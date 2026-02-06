@@ -155,9 +155,12 @@ class HealthConnectRepository(
 
     suspend fun getLatestHeartRate(): HeartRateMetric? {
         val endTime = Instant.now()
-        val startTime = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
+        // Extended time range: look back 7 days to ensure we find data
+        val startTime = LocalDate.now().minusDays(7).atStartOfDay(ZoneId.systemDefault()).toInstant()
 
         return try {
+            Log.d("HealthConnectRepository", "Querying HR from $startTime to $endTime")
+            
             val response = healthConnectClient.readRecords(
                 ReadRecordsRequest(
                     recordType = HeartRateRecord::class,
@@ -167,12 +170,18 @@ class HealthConnectRepository(
 
             Log.d("HealthConnectRepository", "Heart rate records found: ${response.records.size}")
             
+            if (response.records.isEmpty()) {
+                Log.w("HealthConnectRepository", "No heart rate records found in last 7 days")
+                return null
+            }
+            
             val latest = response.records.maxByOrNull { it.startTime }
             if (latest != null) {
-                Log.d("HealthConnectRepository", "Latest HR record has ${latest.samples.size} samples")
+                Log.d("HealthConnectRepository", "Latest HR record from ${latest.startTime}, has ${latest.samples.size} samples")
             }
             
             latest?.samples?.lastOrNull()?.let { sample ->
+                Log.d("HealthConnectRepository", "Returning HR: ${sample.beatsPerMinute} bpm at ${sample.time}")
                 HeartRateMetric(
                     timestamp = sample.time,
                     bpm = sample.beatsPerMinute
