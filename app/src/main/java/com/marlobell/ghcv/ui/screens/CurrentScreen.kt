@@ -311,6 +311,7 @@ fun HealthMetricCard(
     icon: ImageVector? = null,
     trend: Int? = null,
     subtitle: String? = null,
+    comparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
     containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceVariant,
     contentColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant
 ) {
@@ -376,7 +377,36 @@ fun HealthMetricCard(
                 }
             }
             
-            trend?.let { trendValue ->
+            // Show comparison if available, otherwise show trend
+            comparison?.let { comp ->
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = comp.label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = contentColor.copy(alpha = 0.6f)
+                    )
+                    Text(
+                        text = "${comp.value} ${comp.unit}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = contentColor.copy(alpha = 0.8f)
+                    )
+                    comp.difference?.let { diff ->
+                        val diffColor = when (comp.isPositive) {
+                            true -> MaterialTheme.colorScheme.tertiary
+                            false -> MaterialTheme.colorScheme.error
+                            null -> contentColor.copy(alpha = 0.6f)
+                        }
+                        Text(
+                            text = "${diff} (${comp.percentage})",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = diffColor
+                        )
+                    }
+                }
+            } ?: trend?.let { trendValue ->
                 if (trendValue != 0) {
                     Surface(
                         color = if (trendValue > 0) 
@@ -426,7 +456,8 @@ fun VitalsMetricCard(
     icon: ImageVector,
     timestamp: Instant?,
     modifier: Modifier = Modifier,
-    dailyStats: String? = null
+    dailyStats: String? = null,
+    comparison: com.marlobell.ghcv.ui.model.MetricComparison? = null
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -434,69 +465,104 @@ fun VitalsMetricCard(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Column(
-            modifier = Modifier.padding(20.dp).fillMaxWidth()
+        Row(
+            modifier = Modifier.padding(20.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp)
-                )
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.displaySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = unit,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-            }
-            
-            timestamp?.let {
-                val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-                val timeStr = it.atZone(ZoneId.systemDefault()).format(timeFormatter)
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Measured at $timeStr",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-            }
-            
-            dailyStats?.let { stats ->
                 Spacer(modifier = Modifier.height(8.dp))
-                Surface(
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
-                    shape = MaterialTheme.shapes.small
+                
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "Today: $stats",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(8.dp)
+                        text = value,
+                        style = MaterialTheme.typography.displaySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Text(
+                        text = unit,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
+                
+                timestamp?.let {
+                    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+                    val timeStr = it.atZone(ZoneId.systemDefault()).format(timeFormatter)
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Measured at $timeStr",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+                
+                dailyStats?.let { stats ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(
+                            text = "Today: $stats",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                }
+            }
+            
+            // Show comparison if available
+            comparison?.let { comp ->
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = comp.label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                    Text(
+                        text = "${comp.value} ${comp.unit}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    )
+                    comp.difference?.let { diff ->
+                        val diffColor = when (comp.isPositive) {
+                            true -> MaterialTheme.colorScheme.tertiary
+                            false -> MaterialTheme.colorScheme.error
+                            null -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        }
+                        Text(
+                            text = "${diff} (${comp.percentage})",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = diffColor
+                        )
+                    }
                 }
             }
         }

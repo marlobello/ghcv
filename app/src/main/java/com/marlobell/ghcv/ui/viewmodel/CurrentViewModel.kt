@@ -878,7 +878,79 @@ class CurrentViewModel(
             loadCurrentData()
         }
     }
-    
+
+    /**
+     * Creates a MetricComparison object for displaying contextual comparisons.
+     * 
+     * @param current Current value
+     * @param comparison Comparison value (e.g., 7-day average)
+     * @param label Label for the comparison (e.g., "7-day avg", "Resting HR")
+     * @param unit Unit of measurement (e.g., "steps", "bpm")
+     * @param higherIsBetter True if higher values are better (steps, calories), false if lower is better (heart rate delta)
+     * @param formatValue Optional function to format the comparison value
+     */
+    private fun createComparison(
+        current: Double,
+        comparison: Double?,
+        label: String,
+        unit: String,
+        higherIsBetter: Boolean = true,
+        formatValue: (Double) -> String = { String.format(java.util.Locale.US, "%.0f", it) }
+    ): com.marlobell.ghcv.ui.model.MetricComparison? {
+        if (comparison == null || comparison == 0.0) return null
+        
+        val difference = current - comparison
+        val percentageValue = (difference / comparison * 100).toInt()
+        
+        // Determine if positive based on metric type
+        val isPositive = when {
+            kotlin.math.abs(percentageValue) < 5 -> null  // Neutral if within 5%
+            higherIsBetter -> difference > 0  // For steps/calories, higher is better
+            else -> difference < 0  // For HR delta, lower is better
+        }
+        
+        return com.marlobell.ghcv.ui.model.MetricComparison(
+            label = label,
+            value = formatValue(comparison),
+            unit = unit,
+            difference = if (difference >= 0) "+${formatValue(kotlin.math.abs(difference))}" else "-${formatValue(kotlin.math.abs(difference))}",
+            percentage = if (percentageValue >= 0) "+$percentageValue%" else "$percentageValue%",
+            isPositive = isPositive
+        )
+    }
+
+    /**
+     * Creates a comparison for vitals using 7-day average.
+     * Assumes neutral comparison (no inherent "better" direction).
+     */
+    private fun createVitalComparison(
+        current: Double,
+        sevenDayAvg: Double?,
+        unit: String,
+        formatValue: (Double) -> String = { String.format(java.util.Locale.US, "%.1f", it) }
+    ): com.marlobell.ghcv.ui.model.MetricComparison? {
+        if (sevenDayAvg == null || sevenDayAvg == 0.0) return null
+        
+        val difference = current - sevenDayAvg
+        val percentageValue = (difference / sevenDayAvg * 100).toInt()
+        
+        // For vitals, large deviations are concerning
+        val isPositive = when {
+            kotlin.math.abs(percentageValue) < 5 -> null  // Stable is good
+            kotlin.math.abs(percentageValue) < 10 -> null  // Small variance is normal
+            else -> false  // Large deviation is concerning
+        }
+        
+        return com.marlobell.ghcv.ui.model.MetricComparison(
+            label = "7-day avg",
+            value = formatValue(sevenDayAvg),
+            unit = unit,
+            difference = if (difference >= 0) "+${formatValue(kotlin.math.abs(difference))}" else "-${formatValue(kotlin.math.abs(difference))}",
+            percentage = if (percentageValue >= 0) "+$percentageValue%" else "$percentageValue%",
+            isPositive = isPositive
+        )
+    }
+
     override fun onCleared() {
         super.onCleared()
         autoRefreshJob?.cancel()
