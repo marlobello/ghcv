@@ -5,6 +5,7 @@ import androidx.health.connect.client.records.*
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import com.marlobell.ghcv.data.exceptions.HealthConnectException
 import com.marlobell.ghcv.data.model.BloodGlucoseMetric
 import com.marlobell.ghcv.data.model.BloodPressureMetric
 import com.marlobell.ghcv.data.model.BodyTemperatureMetric
@@ -16,6 +17,7 @@ import com.marlobell.ghcv.data.model.RestingHeartRateMetric
 import com.marlobell.ghcv.data.model.SleepMetric
 import com.marlobell.ghcv.data.model.SleepStage
 import com.marlobell.ghcv.data.model.WeightMetric
+import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -37,6 +39,10 @@ class HealthConnectRepository(
     /**
      * Gets today's total steps using AggregateRequest for efficient server-side calculation.
      * Uses data origin filtering to prioritize wearable devices.
+     *
+     * @return Total steps for today
+     * @throws HealthConnectException.PermissionDeniedException if permissions are not granted
+     * @throws HealthConnectException.NetworkException if communication with Health Connect fails
      */
     suspend fun getTodaySteps(): Long {
         val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
@@ -55,9 +61,23 @@ class HealthConnectRepository(
             // Fallback: aggregate without filter (use any available source)
             android.util.Log.d("HealthConnect", "No preferred source found, using any available source")
             getStepsWithoutFilter(startOfDay, endOfDay)
+        } catch (e: SecurityException) {
+            android.util.Log.e("HealthConnect", "Permission denied accessing steps", e)
+            throw HealthConnectException.PermissionDeniedException(
+                message = "Permission denied to read step data"
+            )
+        } catch (e: IOException) {
+            android.util.Log.e("HealthConnect", "Network error fetching steps", e)
+            throw HealthConnectException.NetworkException(
+                message = "Failed to communicate with Health Connect",
+                cause = e
+            )
         } catch (e: Exception) {
             android.util.Log.e("HealthConnect", "Error fetching steps", e)
-            0L
+            throw HealthConnectException.UnknownException(
+                message = "Unexpected error fetching step data: ${e.message}",
+                cause = e
+            )
         }
     }
 
@@ -115,8 +135,20 @@ class HealthConnectRepository(
             
             // Fallback: aggregate without filter
             getStepsWithoutFilter(startOfDay, endOfDay)
+        } catch (e: SecurityException) {
+            throw HealthConnectException.PermissionDeniedException(
+                message = "Permission denied to read step data"
+            )
+        } catch (e: IOException) {
+            throw HealthConnectException.NetworkException(
+                message = "Failed to communicate with Health Connect",
+                cause = e
+            )
         } catch (e: Exception) {
-            0L
+            throw HealthConnectException.UnknownException(
+                message = "Unexpected error fetching step data for $date: ${e.message}",
+                cause = e
+            )
         }
     }
 
@@ -217,14 +249,26 @@ class HealthConnectRepository(
 
         return try {
             val response = healthConnectClient.aggregate(
-                androidx.health.connect.client.request.AggregateRequest(
+                AggregateRequest(
                     metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
                     timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
                 )
             )
             response[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
+        } catch (e: SecurityException) {
+            throw HealthConnectException.PermissionDeniedException(
+                message = "Permission denied to read active calories data"
+            )
+        } catch (e: IOException) {
+            throw HealthConnectException.NetworkException(
+                message = "Failed to communicate with Health Connect",
+                cause = e
+            )
         } catch (e: Exception) {
-            0.0
+            throw HealthConnectException.UnknownException(
+                message = "Unexpected error fetching active calories: ${e.message}",
+                cause = e
+            )
         }
     }
 
@@ -234,14 +278,26 @@ class HealthConnectRepository(
 
         return try {
             val response = healthConnectClient.aggregate(
-                androidx.health.connect.client.request.AggregateRequest(
+                AggregateRequest(
                     metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
                     timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
                 )
             )
             response[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
+        } catch (e: SecurityException) {
+            throw HealthConnectException.PermissionDeniedException(
+                message = "Permission denied to read active calories data"
+            )
+        } catch (e: IOException) {
+            throw HealthConnectException.NetworkException(
+                message = "Failed to communicate with Health Connect",
+                cause = e
+            )
         } catch (e: Exception) {
-            0.0
+            throw HealthConnectException.UnknownException(
+                message = "Unexpected error fetching active calories for $date: ${e.message}",
+                cause = e
+            )
         }
     }
 
