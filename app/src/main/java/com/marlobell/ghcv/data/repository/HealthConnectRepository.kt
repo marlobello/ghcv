@@ -567,6 +567,185 @@ class HealthConnectRepository(
         }
     }
 
+    /**
+     * Gets 7-day average blood pressure using AggregateRequest.
+     * Returns pair of (systolic average, diastolic average).
+     *
+     * @return Pair of average systolic and diastolic values, or null if no data
+     */
+    suspend fun getSevenDayAverageBloodPressure(): Pair<Double, Double>? {
+        val endOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val startOfPeriod = endOfDay.minus(7, ChronoUnit.DAYS)
+
+        return try {
+            val aggregateRequest = AggregateRequest(
+                metrics = setOf(
+                    BloodPressureRecord.SYSTOLIC_AVG,
+                    BloodPressureRecord.DIASTOLIC_AVG
+                ),
+                timeRangeFilter = TimeRangeFilter.between(startOfPeriod, endOfDay)
+            )
+
+            val response = healthConnectClient.aggregate(aggregateRequest)
+            val systolicAvg = response[BloodPressureRecord.SYSTOLIC_AVG]?.inMillimetersOfMercury
+            val diastolicAvg = response[BloodPressureRecord.DIASTOLIC_AVG]?.inMillimetersOfMercury
+
+            if (systolicAvg != null && diastolicAvg != null) {
+                Pair(systolicAvg, diastolicAvg)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("HealthConnect", "Error fetching 7-day avg blood pressure", e)
+            null
+        }
+    }
+
+    /**
+     * Gets 7-day average blood glucose by reading records and calculating manually.
+     *
+     * @return Average blood glucose in mg/dL, or null if no data
+     */
+    suspend fun getSevenDayAverageBloodGlucose(): Double? {
+        val endOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val startOfPeriod = endOfDay.minus(7, ChronoUnit.DAYS)
+
+        return try {
+            val response = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = BloodGlucoseRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(startOfPeriod, endOfDay)
+                )
+            )
+
+            if (response.records.isEmpty()) {
+                null
+            } else {
+                val sum = response.records.sumOf { it.level.inMilligramsPerDeciliter }
+                sum / response.records.size
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("HealthConnect", "Error fetching 7-day avg blood glucose", e)
+            null
+        }
+    }
+
+    /**
+     * Gets 7-day average body temperature by reading records and calculating manually.
+     *
+     * @return Average body temperature in Celsius, or null if no data
+     */
+    suspend fun getSevenDayAverageBodyTemperature(): Double? {
+        val endOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val startOfPeriod = endOfDay.minus(7, ChronoUnit.DAYS)
+
+        return try {
+            val response = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = BodyTemperatureRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(startOfPeriod, endOfDay)
+                )
+            )
+
+            if (response.records.isEmpty()) {
+                null
+            } else {
+                val sum = response.records.sumOf { it.temperature.inCelsius }
+                sum / response.records.size
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("HealthConnect", "Error fetching 7-day avg body temperature", e)
+            null
+        }
+    }
+
+    /**
+     * Gets 7-day average oxygen saturation by reading records and calculating manually.
+     *
+     * @return Average oxygen saturation percentage, or null if no data
+     */
+    suspend fun getSevenDayAverageOxygenSaturation(): Double? {
+        val endOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val startOfPeriod = endOfDay.minus(7, ChronoUnit.DAYS)
+
+        return try {
+            val response = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = OxygenSaturationRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(startOfPeriod, endOfDay)
+                )
+            )
+
+            if (response.records.isEmpty()) {
+                null
+            } else {
+                val sum = response.records.sumOf { it.percentage.value }
+                sum / response.records.size
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("HealthConnect", "Error fetching 7-day avg oxygen saturation", e)
+            null
+        }
+    }
+
+    /**
+     * Gets 7-day average resting heart rate by reading records and calculating manually.
+     *
+     * @return Average resting heart rate in bpm, or null if no data
+     */
+    suspend fun getSevenDayAverageRestingHeartRate(): Long? {
+        val endOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val startOfPeriod = endOfDay.minus(7, ChronoUnit.DAYS)
+
+        return try {
+            val response = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = RestingHeartRateRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(startOfPeriod, endOfDay)
+                )
+            )
+
+            if (response.records.isEmpty()) {
+                null
+            } else {
+                val sum = response.records.sumOf { it.beatsPerMinute }
+                sum / response.records.size
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("HealthConnect", "Error fetching 7-day avg resting heart rate", e)
+            null
+        }
+    }
+
+    /**
+     * Gets 7-day average respiratory rate by reading records and calculating manually.
+     *
+     * @return Average respiratory rate in breaths per minute, or null if no data
+     */
+    suspend fun getSevenDayAverageRespiratoryRate(): Double? {
+        val endOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val startOfPeriod = endOfDay.minus(7, ChronoUnit.DAYS)
+
+        return try {
+            val response = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = RespiratoryRateRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(startOfPeriod, endOfDay)
+                )
+            )
+
+            if (response.records.isEmpty()) {
+                null
+            } else {
+                val sum = response.records.sumOf { it.rate }
+                sum / response.records.size
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("HealthConnect", "Error fetching 7-day avg respiratory rate", e)
+            null
+        }
+    }
+
     suspend fun getLatestRestingHeartRate(): RestingHeartRateMetric? {
         val endTime = Instant.now()
         val startTime = endTime.minus(7, ChronoUnit.DAYS)
