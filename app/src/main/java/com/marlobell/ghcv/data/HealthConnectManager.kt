@@ -3,27 +3,41 @@ package com.marlobell.ghcv.data
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import androidx.compose.runtime.mutableStateOf
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectFeatures
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.*
+import androidx.health.connect.client.request.ChangesTokenRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import com.marlobell.ghcv.data.model.ChangesMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.reflect.KClass
 
 class HealthConnectManager(private val context: Context) {
     
     private val healthConnectClient by lazy { 
         HealthConnectClient.getOrCreate(context)
     }
+
+    /**
+     * Tracks the availability status of Health Connect SDK.
+     * Observable state that can be monitored by ViewModels and UI.
+     */
+    var availability = mutableStateOf(HealthConnectClient.SDK_UNAVAILABLE)
+        private set
 
     companion object {
         val PERMISSIONS = setOf(
@@ -50,7 +64,20 @@ class HealthConnectManager(private val context: Context) {
         )
     }
 
+    init {
+        checkAvailability()
+    }
+
     fun getClient(): HealthConnectClient = healthConnectClient
+
+    /**
+     * Checks and updates the availability status of Health Connect.
+     * Should be called on app start and when returning from background.
+     */
+    fun checkAvailability() {
+        availability.value = HealthConnectClient.getSdkStatus(context)
+        Log.d("GHCV", "Health Connect availability: ${availability.value}")
+    }
 
     suspend fun hasAllPermissions(): Boolean {
         return try {
@@ -130,17 +157,6 @@ class HealthConnectManager(private val context: Context) {
         */
     }
 
-    suspend fun checkAvailability(): Boolean {
-        return try {
-            val status = HealthConnectClient.getSdkStatus(context)
-            Log.d("GHCV", "Health Connect SDK status: $status")
-            status == HealthConnectClient.SDK_AVAILABLE
-        } catch (e: Exception) {
-            Log.e("GHCV", "Error checking HC availability", e)
-            false
-        }
-    }
-    
     suspend fun triggerHealthConnectRegistration(): Boolean {
         return try {
             // Attempt to check permissions - this registers the app with HC
@@ -461,5 +477,42 @@ class HealthConnectManager(private val context: Context) {
                 Log.e("GHCV-DataDump", "Error during data dump", e)
             }
         }
+    }
+
+    /**
+     * Obtains a changes token for the specified record types.
+     * This token can be used with getChanges() to retrieve differential updates.
+     * Tokens expire after 30 days.
+     *
+     * @param dataTypes Set of record types to track changes for
+     * @return Changes token string to use with getChanges()
+     */
+    suspend fun getChangesToken(dataTypes: Set<KClass<out Record>>): String {
+        val request = ChangesTokenRequest(dataTypes)
+        return healthConnectClient.getChangesToken(request)
+    }
+
+    /**
+     * Creates a Flow of change messages using a changes token as a start point.
+     * The flow will emit changes until no more are available, then emit the next token.
+     *
+     * @param token The changes token from getChangesToken() or a previous getChanges() call
+     * @return Flow that emits ChangesMessage.ChangeList for each batch, then ChangesMessage.NoMoreChanges with next token
+     * @throws IOException if the token has expired (tokens are valid for 30 days)
+     */
+    suspend fun getChanges(token: String): Flow<ChangesMessage> = flow {
+        var nextChangesToken = token
+        do {
+            val response = healthConnectClient.getChanges(nextChangesToken)
+            if (response.changesTokenExpired) {
+                // Tokens expire after 30 days. The app should use the Changes API regularly
+                // enough that tokens don't expire, and should have a fallback mechanism
+                // (e.g., fetch all data since a certain date) if they do expire.
+                throw IOException("Changes token has expired")
+            }
+            emit(ChangesMessage.ChangeList(response.changes))
+            nextChangesToken = response.nextChangesToken
+        } while (response.hasMore)
+        emit(ChangesMessage.NoMoreChanges(nextChangesToken))
     }
 }

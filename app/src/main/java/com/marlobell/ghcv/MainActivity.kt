@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.health.connect.client.HealthConnectClient
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -73,14 +74,17 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun HealthConnectApp(healthConnectManager: HealthConnectManager) {
-    var healthConnectAvailable by remember { mutableStateOf(false) }
+    // Observe the availability state from HealthConnectManager
+    val healthConnectAvailability by remember { healthConnectManager.availability }
+    val healthConnectAvailable = healthConnectAvailability == HealthConnectClient.SDK_AVAILABLE
+    
     var permissionsGranted by remember { mutableStateOf(false) }
     var checkingPermissions by remember { mutableStateOf(true) }
     val context = LocalContext.current
     
     LaunchedEffect(Unit) {
         Log.d("GHCV", "Checking Health Connect availability")
-        healthConnectAvailable = healthConnectManager.checkAvailability()
+        healthConnectManager.checkAvailability()
         Log.d("GHCV", "Health Connect available: $healthConnectAvailable")
         if (healthConnectAvailable) {
             // Try to register with Health Connect first
