@@ -106,7 +106,7 @@ fun CurrentScreen(
                         title = "Steps",
                         value = "${healthData.steps}",
                         icon = Icons.AutoMirrored.Filled.DirectionsWalk,
-                        trend = healthData.stepsTrend,
+                        comparison = healthData.stepsComparison,
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
@@ -122,7 +122,8 @@ fun CurrentScreen(
                         value = "$hr",
                         unit = "bpm",
                         icon = Icons.Filled.Favorite,
-                        subtitle = if (timeStr.isNotEmpty()) "Measured at $timeStr" else null
+                        subtitle = if (timeStr.isNotEmpty()) "Measured at $timeStr" else null,
+                        comparison = healthData.heartRateComparison
                     )
                 }
                 
@@ -134,7 +135,8 @@ fun CurrentScreen(
                         title = "Sleep Last Night",
                         value = "${hours}h ${minutes}m",
                         icon = Icons.Filled.Bedtime,
-                        subtitle = "Total sleep duration"
+                        subtitle = "Total sleep duration",
+                        comparison = healthData.sleepComparison
                     )
                 }
                 
@@ -143,7 +145,8 @@ fun CurrentScreen(
                         title = "Active Calories",
                         value = String.format(Locale.US, "%.0f", healthData.activeCalories),
                         unit = "kcal",
-                        icon = Icons.Filled.LocalFireDepartment
+                        icon = Icons.Filled.LocalFireDepartment,
+                        comparison = healthData.caloriesComparison
                     )
                 }
                 
@@ -160,7 +163,8 @@ fun CurrentScreen(
                                 "Avg: ${healthData.bloodPressure.dailyAvg?.toInt() ?: "--"} | " +
                                 "Min: ${healthData.bloodPressure.dailyMin?.toInt() ?: "--"} | " +
                                 "Max: ${healthData.bloodPressure.dailyMax?.toInt() ?: "--"}"
-                            } else null
+                            } else null,
+                            comparison = healthData.bloodPressureSystolicComparison
                         )
                     }
                 }
@@ -177,7 +181,8 @@ fun CurrentScreen(
                                 "Avg: ${String.format(Locale.US, "%.0f", healthData.bloodGlucose.dailyAvg ?: 0.0)} | " +
                                 "Min: ${String.format(Locale.US, "%.0f", healthData.bloodGlucose.dailyMin ?: 0.0)} | " +
                                 "Max: ${String.format(Locale.US, "%.0f", healthData.bloodGlucose.dailyMax ?: 0.0)}"
-                            } else null
+                            } else null,
+                            comparison = healthData.bloodGlucoseComparison
                         )
                     }
                 }
@@ -194,7 +199,8 @@ fun CurrentScreen(
                                 "Avg: ${String.format(Locale.US, "%.1f", healthData.bodyTemperature.dailyAvg ?: 0.0)} | " +
                                 "Min: ${String.format(Locale.US, "%.1f", healthData.bodyTemperature.dailyMin ?: 0.0)} | " +
                                 "Max: ${String.format(Locale.US, "%.1f", healthData.bodyTemperature.dailyMax ?: 0.0)}"
-                            } else null
+                            } else null,
+                            comparison = healthData.bodyTemperatureComparison
                         )
                     }
                 }
@@ -211,7 +217,8 @@ fun CurrentScreen(
                                 "Avg: ${String.format(Locale.US, "%.0f", healthData.oxygenSaturation.dailyAvg ?: 0.0)} | " +
                                 "Min: ${String.format(Locale.US, "%.0f", healthData.oxygenSaturation.dailyMin ?: 0.0)} | " +
                                 "Max: ${String.format(Locale.US, "%.0f", healthData.oxygenSaturation.dailyMax ?: 0.0)}"
-                            } else null
+                            } else null,
+                            comparison = healthData.oxygenSaturationComparison
                         )
                     }
                 }
@@ -228,7 +235,8 @@ fun CurrentScreen(
                                 "Avg: ${healthData.restingHeartRate.dailyAvg?.toInt() ?: "--"} | " +
                                 "Min: ${healthData.restingHeartRate.dailyMin?.toInt() ?: "--"} | " +
                                 "Max: ${healthData.restingHeartRate.dailyMax?.toInt() ?: "--"}"
-                            } else null
+                            } else null,
+                            comparison = healthData.restingHeartRateComparison
                         )
                     }
                 }
@@ -245,7 +253,8 @@ fun CurrentScreen(
                                 "Avg: ${String.format(Locale.US, "%.0f", healthData.respiratoryRate.dailyAvg ?: 0.0)} | " +
                                 "Min: ${String.format(Locale.US, "%.0f", healthData.respiratoryRate.dailyMin ?: 0.0)} | " +
                                 "Max: ${String.format(Locale.US, "%.0f", healthData.respiratoryRate.dailyMax ?: 0.0)}"
-                            } else null
+                            } else null,
+                            comparison = healthData.respiratoryRateComparison
                         )
                     }
                 }

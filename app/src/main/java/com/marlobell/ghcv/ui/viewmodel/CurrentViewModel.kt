@@ -57,7 +57,19 @@ data class CurrentHealthData(
     // Categorized metrics for UI sections
     val metricsWithData: List<MetricInfo> = emptyList(),
     val metricsNoPermission: List<MetricInfo> = emptyList(),
-    val metricsNoData: List<MetricInfo> = emptyList()
+    val metricsNoData: List<MetricInfo> = emptyList(),
+    // Pre-computed comparisons for UI
+    val stepsComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
+    val heartRateComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
+    val sleepComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
+    val caloriesComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
+    val bloodPressureSystolicComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
+    val bloodPressureDiastolicComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
+    val bloodGlucoseComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
+    val bodyTemperatureComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
+    val oxygenSaturationComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
+    val restingHeartRateComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
+    val respiratoryRateComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null
 ) {
     val stepsTrend: Int
         get() = if (sevenDayAvgSteps > 0) {
@@ -472,6 +484,115 @@ class CurrentViewModel(
                     null
                 }
 
+                // Create comparisons for UI
+                val stepsComp = createComparison(
+                    current = steps.toDouble(),
+                    comparison = sevenDayAvgSteps.toDouble(),
+                    label = "7-day avg",
+                    unit = "steps",
+                    higherIsBetter = true,
+                    formatValue = { String.format(java.util.Locale.US, "%.0f", it) }
+                )
+                
+                val heartRateComp = heartRate?.bpm?.let { currentHR ->
+                    todayAvgHeartRate?.let { restingHR ->
+                        createComparison(
+                            current = currentHR.toDouble(),
+                            comparison = restingHR.toDouble(),
+                            label = "Resting HR",
+                            unit = "bpm",
+                            higherIsBetter = false,  // Lower delta from resting is better
+                            formatValue = { String.format(java.util.Locale.US, "%.0f", it) }
+                        )
+                    }
+                }
+                
+                val sleepComp = sleepData?.durationMinutes?.let { currentSleep ->
+                    createComparison(
+                        current = currentSleep.toDouble(),
+                        comparison = sevenDayAvgSleep.toDouble(),
+                        label = "7-day avg",
+                        unit = "min",
+                        higherIsBetter = true,
+                        formatValue = { minutes ->
+                            val hrs = (minutes / 60).toInt()
+                            val mins = (minutes % 60).toInt()
+                            "${hrs}h ${mins}m"
+                        }
+                    )
+                }
+                
+                val caloriesComp = createComparison(
+                    current = calories,
+                    comparison = sevenDayAvgCalories,
+                    label = "7-day avg",
+                    unit = "kcal",
+                    higherIsBetter = true,
+                    formatValue = { String.format(java.util.Locale.US, "%.0f", it) }
+                )
+                
+                // Vital comparisons
+                val bpSystolicComp = bloodPressureStats.latest?.let { bp ->
+                    createVitalComparison(
+                        current = bp.systolic,
+                        sevenDayAvg = sevenDayAvgBP?.first,
+                        unit = "mmHg",
+                        formatValue = { String.format(java.util.Locale.US, "%.0f", it) }
+                    )
+                }
+                
+                val bpDiastolicComp = bloodPressureStats.latest?.let { bp ->
+                    createVitalComparison(
+                        current = bp.diastolic,
+                        sevenDayAvg = sevenDayAvgBP?.second,
+                        unit = "mmHg",
+                        formatValue = { String.format(java.util.Locale.US, "%.0f", it) }
+                    )
+                }
+                
+                val glucoseComp = bloodGlucoseStats.latest?.let { glucose ->
+                    createVitalComparison(
+                        current = glucose,
+                        sevenDayAvg = sevenDayAvgBloodGlucose,
+                        unit = "mg/dL",
+                        formatValue = { String.format(java.util.Locale.US, "%.0f", it) }
+                    )
+                }
+                
+                val bodyTempComp = bodyTemperatureStats.latest?.let { temp ->
+                    createVitalComparison(
+                        current = temp,
+                        sevenDayAvg = sevenDayAvgBodyTemp,
+                        unit = "°C"
+                    )
+                }
+                
+                val spo2Comp = oxygenSaturationStats.latest?.let { spo2 ->
+                    createVitalComparison(
+                        current = spo2,
+                        sevenDayAvg = sevenDayAvgSpO2,
+                        unit = "%",
+                        formatValue = { String.format(java.util.Locale.US, "%.1f", it) }
+                    )
+                }
+                
+                val restingHRComp = restingHeartRateStats.latest?.let { rhr ->
+                    createVitalComparison(
+                        current = rhr.toDouble(),
+                        sevenDayAvg = sevenDayAvgRestingHR?.toDouble(),
+                        unit = "bpm",
+                        formatValue = { String.format(java.util.Locale.US, "%.0f", it) }
+                    )
+                }
+                
+                val respRateComp = respiratoryRateStats.latest?.let { rr ->
+                    createVitalComparison(
+                        current = rr,
+                        sevenDayAvg = sevenDayAvgRespRate,
+                        unit = "br/min"
+                    )
+                }
+
                 _healthData.value = CurrentHealthData(
                     steps = steps,
                     heartRate = heartRate?.bpm,
@@ -495,7 +616,19 @@ class CurrentViewModel(
                     oxygenSaturation = oxygenSaturationStats,
                     restingHeartRate = restingHeartRateStats,
                     respiratoryRate = respiratoryRateStats,
-                    lastUpdated = Instant.now()
+                    lastUpdated = Instant.now(),
+                    // Comparisons
+                    stepsComparison = stepsComp,
+                    heartRateComparison = heartRateComp,
+                    sleepComparison = sleepComp,
+                    caloriesComparison = caloriesComp,
+                    bloodPressureSystolicComparison = bpSystolicComp,
+                    bloodPressureDiastolicComparison = bpDiastolicComp,
+                    bloodGlucoseComparison = glucoseComp,
+                    bodyTemperatureComparison = bodyTempComp,
+                    oxygenSaturationComparison = spo2Comp,
+                    restingHeartRateComparison = restingHRComp,
+                    respiratoryRateComparison = respRateComp
                 ).let { data ->
                     // Categorize metrics for UI sections
                     categorizeMetrics(data)
@@ -889,7 +1022,7 @@ class CurrentViewModel(
      * @param higherIsBetter True if higher values are better (steps, calories), false if lower is better (heart rate delta)
      * @param formatValue Optional function to format the comparison value
      */
-    private fun createComparison(
+    fun createComparison(
         current: Double,
         comparison: Double?,
         label: String,
@@ -923,7 +1056,7 @@ class CurrentViewModel(
      * Creates a comparison for vitals using 7-day average.
      * Assumes neutral comparison (no inherent "better" direction).
      */
-    private fun createVitalComparison(
+    fun createVitalComparison(
         current: Double,
         sevenDayAvg: Double?,
         unit: String,
