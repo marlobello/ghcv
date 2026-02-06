@@ -42,3 +42,17 @@ enum class HealthMetricType(val displayName: String) {
     RESTING_HEART_RATE("Resting Heart Rate"),
     RESPIRATORY_RATE("Respiratory Rate")
 }
+
+/**
+ * Represents a comparison value for a health metric.
+ * Provides contextual information about how current values compare to historical averages.
+ */
+data class MetricComparison(
+    val label: String,           // e.g., "7-day avg" or "Resting HR"
+    val value: String,            // e.g., "8,245"
+    val unit: String,             // e.g., "steps", "bpm", "kcal"
+    val difference: String? = null,      // e.g., "+1,234" or "-234"
+    val percentage: String? = null,      // e.g., "+12%" or "-5%"
+    val isPositive: Boolean? = null      // true = better/green, false = worse/red, null = neutral/gray
+)
+

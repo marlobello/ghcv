@@ -429,6 +429,49 @@ class CurrentViewModel(
                     VitalStats()
                 }
 
+                // Fetch 7-day averages for vitals comparisons
+                val sevenDayAvgBP = try {
+                    repository.getSevenDayAverageBloodPressure()
+                } catch (e: Exception) {
+                    Log.w("CurrentViewModel", "Failed to fetch 7-day avg blood pressure", e)
+                    null
+                }
+                
+                val sevenDayAvgBloodGlucose = try {
+                    repository.getSevenDayAverageBloodGlucose()
+                } catch (e: Exception) {
+                    Log.w("CurrentViewModel", "Failed to fetch 7-day avg blood glucose", e)
+                    null
+                }
+                
+                val sevenDayAvgBodyTemp = try {
+                    repository.getSevenDayAverageBodyTemperature()
+                } catch (e: Exception) {
+                    Log.w("CurrentViewModel", "Failed to fetch 7-day avg body temperature", e)
+                    null
+                }
+                
+                val sevenDayAvgSpO2 = try {
+                    repository.getSevenDayAverageOxygenSaturation()
+                } catch (e: Exception) {
+                    Log.w("CurrentViewModel", "Failed to fetch 7-day avg oxygen saturation", e)
+                    null
+                }
+                
+                val sevenDayAvgRestingHR = try {
+                    repository.getSevenDayAverageRestingHeartRate()
+                } catch (e: Exception) {
+                    Log.w("CurrentViewModel", "Failed to fetch 7-day avg resting heart rate", e)
+                    null
+                }
+                
+                val sevenDayAvgRespRate = try {
+                    repository.getSevenDayAverageRespiratoryRate()
+                } catch (e: Exception) {
+                    Log.w("CurrentViewModel", "Failed to fetch 7-day avg respiratory rate", e)
+                    null
+                }
+
                 _healthData.value = CurrentHealthData(
                     steps = steps,
                     heartRate = heartRate?.bpm,
@@ -439,6 +482,13 @@ class CurrentViewModel(
                     sevenDayAvgSteps = sevenDayAvgSteps,
                     sevenDayAvgSleep = sevenDayAvgSleep,
                     sevenDayAvgCalories = sevenDayAvgCalories,
+                    sevenDayAvgBloodPressureSystolic = sevenDayAvgBP?.first,
+                    sevenDayAvgBloodPressureDiastolic = sevenDayAvgBP?.second,
+                    sevenDayAvgBloodGlucose = sevenDayAvgBloodGlucose,
+                    sevenDayAvgBodyTemperature = sevenDayAvgBodyTemp,
+                    sevenDayAvgOxygenSaturation = sevenDayAvgSpO2,
+                    sevenDayAvgRestingHeartRate = sevenDayAvgRestingHR,
+                    sevenDayAvgRespiratoryRate = sevenDayAvgRespRate,
                     bloodPressure = bloodPressureStats,
                     bloodGlucose = bloodGlucoseStats,
                     bodyTemperature = bodyTemperatureStats,
