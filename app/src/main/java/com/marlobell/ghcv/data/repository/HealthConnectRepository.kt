@@ -1,5 +1,6 @@
 package com.marlobell.ghcv.data.repository
 
+import android.util.Log
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.records.*
 import androidx.health.connect.client.request.AggregateRequest
@@ -243,6 +244,28 @@ class HealthConnectRepository(
         )
     }
 
+    suspend fun getAverageSleepDuration(startTime: Instant, endTime: Instant): Long {
+        return try {
+            val aggregateRequest = AggregateRequest(
+                metrics = setOf(SleepSessionRecord.SLEEP_DURATION_TOTAL),
+                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+            )
+            val result = healthConnectClient.aggregate(aggregateRequest)
+            val totalDuration = result[SleepSessionRecord.SLEEP_DURATION_TOTAL] ?: return 0L
+            
+            // Calculate days between for average
+            val daysBetween = ChronoUnit.DAYS.between(startTime, endTime)
+            if (daysBetween > 0) {
+                ChronoUnit.MINUTES.between(Instant.EPOCH, Instant.EPOCH.plus(totalDuration)) / daysBetween
+            } else {
+                0L
+            }
+        } catch (e: Exception) {
+            Log.e("HealthConnectRepository", "Error aggregating sleep duration", e)
+            0L
+        }
+    }
+
     suspend fun getTodayActiveCalories(): Double {
         val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
         val endOfDay = Instant.now()
@@ -345,14 +368,17 @@ class HealthConnectRepository(
         val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
         val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
 
-        val response = healthConnectClient.readRecords(
-            ReadRecordsRequest(
-                recordType = DistanceRecord::class,
+        return try {
+            val aggregateRequest = AggregateRequest(
+                metrics = setOf(DistanceRecord.DISTANCE_TOTAL),
                 timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
             )
-        )
-
-        return response.records.sumOf { it.distance.inMeters }
+            val result = healthConnectClient.aggregate(aggregateRequest)
+            result[DistanceRecord.DISTANCE_TOTAL]?.inMeters ?: 0.0
+        } catch (e: Exception) {
+            Log.e("HealthConnectRepository", "Error aggregating distance for date: $date", e)
+            0.0
+        }
     }
 
     suspend fun getExerciseSessionsForDate(date: LocalDate): List<ExerciseSessionMetric> {

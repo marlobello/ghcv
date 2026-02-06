@@ -284,16 +284,9 @@ class CurrentViewModel(
                 
                 // 7-day average sleep
                 val sevenDayAvgSleep = try {
-                    val past7Days = (1..7).map { daysAgo ->
-                        val date = LocalDate.now().minusDays(daysAgo.toLong())
-                        try {
-                            repository.getSleepForDate(date)?.durationMinutes ?: 0L
-                        } catch (e: Exception) {
-                            0L
-                        }
-                    }
-                    val total = past7Days.sum()
-                    if (total > 0) total / 7 else 0L
+                    val sevenDaysAgo = LocalDate.now().minusDays(7).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()
+                    val now = Instant.now()
+                    repository.getAverageSleepDuration(sevenDaysAgo, now)
                 } catch (e: Exception) {
                     Log.w("CurrentViewModel", "Failed to fetch 7-day average sleep", e)
                     0L
