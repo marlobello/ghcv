@@ -8,14 +8,6 @@ sealed class HealthMetric {
     abstract val unit: String
 }
 
-data class StepsMetric(
-    override val timestamp: Instant,
-    val count: Long
-) : HealthMetric() {
-    override val value: Double = count.toDouble()
-    override val unit: String = "steps"
-}
-
 data class HeartRateMetric(
     override val timestamp: Instant,
     val bpm: Long
@@ -56,27 +48,6 @@ data class WeightMetric(
     override val unit: String = "kg"
 }
 
-data class DistanceMetric(
-    override val timestamp: Instant,
-    val meters: Double
-) : HealthMetric() {
-    override val value: Double = meters
-    override val unit: String = "m"
-}
-
-data class CaloriesMetric(
-    override val timestamp: Instant,
-    val kcal: Double,
-    val type: CalorieType
-) : HealthMetric() {
-    override val value: Double = kcal
-    override val unit: String = "kcal"
-}
-
-enum class CalorieType {
-    ACTIVE, TOTAL, BASAL
-}
-
 data class ExerciseSessionMetric(
     override val timestamp: Instant,
     val endTime: Instant,
@@ -87,14 +58,6 @@ data class ExerciseSessionMetric(
 ) : HealthMetric() {
     override val value: Double = durationMinutes.toDouble()
     override val unit: String = "minutes"
-}
-
-data class HydrationMetric(
-    override val timestamp: Instant,
-    val liters: Double
-) : HealthMetric() {
-    override val value: Double = liters
-    override val unit: String = "L"
 }
 
 data class BodyTemperatureMetric(

@@ -324,26 +324,6 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getLatestWeight(): WeightMetric? {
-        val endTime = Instant.now()
-        val startTime = endTime.minus(30, ChronoUnit.DAYS)
-
-        val response = healthConnectClient.readRecords(
-            ReadRecordsRequest(
-                recordType = WeightRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
-            )
-        )
-
-        val latest = response.records.maxByOrNull { it.time }
-        return latest?.let {
-            WeightMetric(
-                timestamp = it.time,
-                kilograms = it.weight.inKilograms
-            )
-        }
-    }
-
     suspend fun getBloodPressureForDate(date: LocalDate): List<BloodPressureMetric> {
         val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
         val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
@@ -414,25 +394,6 @@ class HealthConnectRepository(
         }
 
         return result.reversed()
-    }
-
-    suspend fun getWeightTrend(days: Int): List<WeightMetric> {
-        val endTime = Instant.now()
-        val startTime = endTime.minus(days.toLong(), ChronoUnit.DAYS)
-
-        val response = healthConnectClient.readRecords(
-            ReadRecordsRequest(
-                recordType = WeightRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
-            )
-        )
-
-        return response.records.map {
-            WeightMetric(
-                timestamp = it.time,
-                kilograms = it.weight.inKilograms
-            )
-        }.sortedBy { it.timestamp }
     }
 
     suspend fun getLatestBloodPressure(): BloodPressureMetric? {

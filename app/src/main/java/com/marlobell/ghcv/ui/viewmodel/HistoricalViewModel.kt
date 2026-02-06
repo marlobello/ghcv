@@ -58,6 +58,7 @@ class HistoricalViewModel(
                 val maxHr = heartRateList.maxOfOrNull { it.bpm }
                 val sleep = repository.getSleepForDate(date)
                 val distance = repository.getDistanceForDate(date)
+                val activeCalories = repository.getActiveCaloriesForDate(date)
                 val exercises = repository.getExerciseSessionsForDate(date)
                 val previousDay = repository.getStepsForDate(date.minusDays(1))
 
@@ -70,7 +71,7 @@ class HistoricalViewModel(
                     maxHeartRate = maxHr,
                     sleepData = sleep,
                     sleepDurationMinutes = sleep?.durationMinutes,
-                    activeCalories = 0.0, // TODO: implement
+                    activeCalories = activeCalories,
                     distance = distance,
                     exerciseSessions = exercises.size,
                     previousDaySteps = previousDay,
