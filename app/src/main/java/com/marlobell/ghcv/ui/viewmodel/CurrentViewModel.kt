@@ -233,9 +233,7 @@ class CurrentViewModel(
                 }
                 
                 val heartRate = try {
-                    val hr = repository.getLatestHeartRate()
-                    Log.d("CurrentViewModel", "Heart rate fetched: $hr (bpm: ${hr?.bpm})")
-                    hr
+                    repository.getLatestHeartRate()
                 } catch (e: Exception) {
                     Log.w("CurrentViewModel", "Failed to fetch heart rate", e)
                     null
@@ -625,8 +623,6 @@ class CurrentViewModel(
                     restingHeartRateComparison = restingHRComp,
                     respiratoryRateComparison = respRateComp
                 )
-                
-                Log.d("CurrentViewModel", "Health data updated - HR in state: ${_healthData.value.heartRate}")
                 
                 // Categorize metrics for UI sections
                 categorizeMetrics(_healthData.value)
