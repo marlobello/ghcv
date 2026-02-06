@@ -29,8 +29,14 @@ fun CurrentScreen(
     healthConnectManager: HealthConnectManager,
     modifier: Modifier = Modifier
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    
     val repository = remember {
         HealthConnectRepository(healthConnectManager.getClient())
+    }
+    
+    val changesTokenStorage = remember {
+        com.marlobell.ghcv.data.ChangesTokenStorage(context)
     }
     
     val viewModel: CurrentViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
@@ -41,6 +47,11 @@ fun CurrentScreen(
             }
         }
     )
+    
+    // Initialize the ViewModel with token storage
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        viewModel.initialize(changesTokenStorage)
+    }
     
     val healthData by viewModel.healthData.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
