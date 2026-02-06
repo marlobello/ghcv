@@ -2,6 +2,7 @@ package com.marlobell.ghcv.data.repository
 
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.records.*
+import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import com.marlobell.ghcv.data.model.BloodGlucoseMetric
@@ -24,39 +25,79 @@ class HealthConnectRepository(
     private val healthConnectClient: HealthConnectClient
 ) {
 
+    companion object {
+        // Preferred data sources in priority order
+        private val PREFERRED_SOURCES = listOf(
+            "com.ouraring.oura",              // Oura Ring
+            "com.google.android.apps.fitness", // Google Fit
+            "android"                          // Android system
+        )
+    }
+
+    /**
+     * Gets today's total steps using AggregateRequest for efficient server-side calculation.
+     * Uses data origin filtering to prioritize wearable devices.
+     */
     suspend fun getTodaySteps(): Long {
         val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
         val endOfDay = Instant.now()
 
         return try {
-            // Read raw records
-            val recordsResponse = healthConnectClient.readRecords(
-                ReadRecordsRequest(
-                    recordType = StepsRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
-                )
-            )
-            
-            // Group by data source and pick the highest count (prioritize wearables)
-            val sourceGroups = recordsResponse.records.groupBy { it.metadata.dataOrigin.packageName }
-            
-            val sourceTotals = sourceGroups.map { (source, records) ->
-                source to records.sumOf { it.count }
-            }.toMap()
-            
-            // Priority: Oura Ring > Google Fit > Android system
-            val preferredSources = listOf("com.ouraring.oura", "com.google.android.apps.fitness", "android")
-            val selectedSource = preferredSources.firstOrNull { it in sourceTotals.keys }
-            
-            if (selectedSource != null) {
-                sourceTotals[selectedSource] ?: 0L
-            } else {
-                sourceTotals.values.maxOrNull() ?: 0L
+            // Try preferred sources first
+            for (source in PREFERRED_SOURCES) {
+                val steps = getStepsWithDataOriginFilter(startOfDay, endOfDay, source)
+                if (steps > 0) {
+                    android.util.Log.d("HealthConnect", "Using steps from $source: $steps")
+                    return steps
+                }
             }
+            
+            // Fallback: aggregate without filter (use any available source)
+            android.util.Log.d("HealthConnect", "No preferred source found, using any available source")
+            getStepsWithoutFilter(startOfDay, endOfDay)
         } catch (e: Exception) {
             android.util.Log.e("HealthConnect", "Error fetching steps", e)
             0L
         }
+    }
+
+    /**
+     * Helper function to get steps with data origin filter.
+     */
+    private suspend fun getStepsWithDataOriginFilter(
+        start: Instant,
+        end: Instant,
+        packageName: String
+    ): Long {
+        return try {
+            val dataOriginFilter = setOf(
+                androidx.health.connect.client.records.metadata.DataOrigin(packageName)
+            )
+            
+            val aggregateRequest = AggregateRequest(
+                metrics = setOf(StepsRecord.COUNT_TOTAL),
+                timeRangeFilter = TimeRangeFilter.between(start, end),
+                dataOriginFilter = dataOriginFilter
+            )
+            
+            val response = healthConnectClient.aggregate(aggregateRequest)
+            response[StepsRecord.COUNT_TOTAL] ?: 0L
+        } catch (e: Exception) {
+            0L
+        }
+    }
+
+    /**
+     * Helper function to get steps without data origin filter.
+     */
+    private suspend fun getStepsWithoutFilter(start: Instant, end: Instant): Long {
+        val aggregateRequest = AggregateRequest(
+            metrics = setOf(StepsRecord.COUNT_TOTAL),
+            timeRangeFilter = TimeRangeFilter.between(start, end)
+        )
+        
+        val response = healthConnectClient.aggregate(aggregateRequest)
+        return response[StepsRecord.COUNT_TOTAL] ?: 0L
     }
 
     suspend fun getStepsForDate(date: LocalDate): Long {
@@ -64,26 +105,16 @@ class HealthConnectRepository(
         val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
 
         return try {
-            val recordsResponse = healthConnectClient.readRecords(
-                ReadRecordsRequest(
-                    recordType = StepsRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
-                )
-            )
-            
-            // Group by source and pick highest (prioritize wearables)
-            val sourceTotals = recordsResponse.records
-                .groupBy { it.metadata.dataOrigin.packageName }
-                .mapValues { (_, records) -> records.sumOf { it.count } }
-            
-            val preferredSources = listOf("com.ouraring.oura", "com.google.android.apps.fitness", "android")
-            val selectedSource = preferredSources.firstOrNull { it in sourceTotals.keys }
-            
-            if (selectedSource != null) {
-                sourceTotals[selectedSource] ?: 0L
-            } else {
-                sourceTotals.values.maxOrNull() ?: 0L
+            // Try preferred sources first
+            for (source in PREFERRED_SOURCES) {
+                val steps = getStepsWithDataOriginFilter(startOfDay, endOfDay, source)
+                if (steps > 0) {
+                    return steps
+                }
             }
+            
+            // Fallback: aggregate without filter
+            getStepsWithoutFilter(startOfDay, endOfDay)
         } catch (e: Exception) {
             0L
         }
@@ -131,10 +162,20 @@ class HealthConnectRepository(
     }
 
     suspend fun getAverageHeartRateForDate(date: LocalDate): Double? {
-        val heartRates = getHeartRateForDate(date)
-        return if (heartRates.isNotEmpty()) {
-            heartRates.map { it.bpm.toDouble() }.average()
-        } else null
+        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
+        
+        return try {
+            val aggregateRequest = AggregateRequest(
+                metrics = setOf(HeartRateRecord.BPM_AVG),
+                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+            )
+            
+            val response = healthConnectClient.aggregate(aggregateRequest)
+            response[HeartRateRecord.BPM_AVG]?.toDouble()
+        } catch (e: Exception) {
+            null
+        }
     }
 
     suspend fun getSleepForDate(date: LocalDate): SleepMetric? {
