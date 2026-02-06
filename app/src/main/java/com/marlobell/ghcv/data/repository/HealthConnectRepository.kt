@@ -157,19 +157,30 @@ class HealthConnectRepository(
         val endTime = Instant.now()
         val startTime = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
 
-        val response = healthConnectClient.readRecords(
-            ReadRecordsRequest(
-                recordType = HeartRateRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+        return try {
+            val response = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = HeartRateRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+                )
             )
-        )
 
-        val latest = response.records.maxByOrNull { it.startTime }
-        return latest?.samples?.lastOrNull()?.let { sample ->
-            HeartRateMetric(
-                timestamp = sample.time,
-                bpm = sample.beatsPerMinute
-            )
+            Log.d("HealthConnectRepository", "Heart rate records found: ${response.records.size}")
+            
+            val latest = response.records.maxByOrNull { it.startTime }
+            if (latest != null) {
+                Log.d("HealthConnectRepository", "Latest HR record has ${latest.samples.size} samples")
+            }
+            
+            latest?.samples?.lastOrNull()?.let { sample ->
+                HeartRateMetric(
+                    timestamp = sample.time,
+                    bpm = sample.beatsPerMinute
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("HealthConnectRepository", "Error fetching latest heart rate", e)
+            null
         }
     }
 
@@ -555,8 +566,8 @@ class HealthConnectRepository(
     }
 
     /**
-     * Gets 7-day average blood pressure using AggregateRequest.
-     * Returns pair of (systolic average, diastolic average).
+     * Gets 7-day average blood pressure by reading records and calculating manually.
+     * Note: Aggregate metrics for blood pressure appear to be unavailable in current Health Connect version.
      *
      * @return Pair of average systolic and diastolic values, or null if no data
      */
@@ -565,25 +576,23 @@ class HealthConnectRepository(
         val startOfPeriod = endOfDay.minus(7, ChronoUnit.DAYS)
 
         return try {
-            val aggregateRequest = AggregateRequest(
-                metrics = setOf(
-                    BloodPressureRecord.SYSTOLIC_AVG,
-                    BloodPressureRecord.DIASTOLIC_AVG
-                ),
-                timeRangeFilter = TimeRangeFilter.between(startOfPeriod, endOfDay)
+            val response = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = BloodPressureRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(startOfPeriod, endOfDay)
+                )
             )
 
-            val response = healthConnectClient.aggregate(aggregateRequest)
-            val systolicAvg = response[BloodPressureRecord.SYSTOLIC_AVG]?.inMillimetersOfMercury
-            val diastolicAvg = response[BloodPressureRecord.DIASTOLIC_AVG]?.inMillimetersOfMercury
-
-            if (systolicAvg != null && diastolicAvg != null) {
-                Pair(systolicAvg, diastolicAvg)
-            } else {
-                null
+            if (response.records.isEmpty()) {
+                return null
             }
+
+            val systolicAvg = response.records.map { it.systolic.inMillimetersOfMercury }.average()
+            val diastolicAvg = response.records.map { it.diastolic.inMillimetersOfMercury }.average()
+
+            Pair(systolicAvg, diastolicAvg)
         } catch (e: Exception) {
-            android.util.Log.e("HealthConnect", "Error fetching 7-day avg blood pressure", e)
+            Log.e("HealthConnectRepository", "Error fetching 7-day avg blood pressure", e)
             null
         }
     }
