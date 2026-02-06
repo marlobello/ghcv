@@ -689,7 +689,7 @@ class HealthConnectRepository(
     }
 
     /**
-     * Gets 7-day average resting heart rate by reading records and calculating manually.
+     * Gets 7-day average resting heart rate using AggregateRequest.
      *
      * @return Average resting heart rate in bpm, or null if no data
      */
@@ -698,19 +698,13 @@ class HealthConnectRepository(
         val startOfPeriod = endOfDay.minus(7, ChronoUnit.DAYS)
 
         return try {
-            val response = healthConnectClient.readRecords(
-                ReadRecordsRequest(
-                    recordType = RestingHeartRateRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(startOfPeriod, endOfDay)
-                )
+            val aggregateRequest = AggregateRequest(
+                metrics = setOf(RestingHeartRateRecord.BPM_AVG),
+                timeRangeFilter = TimeRangeFilter.between(startOfPeriod, endOfDay)
             )
-
-            if (response.records.isEmpty()) {
-                null
-            } else {
-                val sum = response.records.sumOf { it.beatsPerMinute }
-                sum / response.records.size
-            }
+            
+            val response = healthConnectClient.aggregate(aggregateRequest)
+            response[RestingHeartRateRecord.BPM_AVG]
         } catch (e: Exception) {
             android.util.Log.e("HealthConnect", "Error fetching 7-day avg resting heart rate", e)
             null
