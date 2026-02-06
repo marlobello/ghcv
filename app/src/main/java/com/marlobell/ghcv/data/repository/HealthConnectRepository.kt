@@ -4,7 +4,17 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.records.*
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
-import com.marlobell.ghcv.data.model.*
+import com.marlobell.ghcv.data.model.BloodGlucoseMetric
+import com.marlobell.ghcv.data.model.BloodPressureMetric
+import com.marlobell.ghcv.data.model.BodyTemperatureMetric
+import com.marlobell.ghcv.data.model.ExerciseSessionMetric
+import com.marlobell.ghcv.data.model.HeartRateMetric
+import com.marlobell.ghcv.data.model.OxygenSaturationMetric
+import com.marlobell.ghcv.data.model.RespiratoryRateMetric
+import com.marlobell.ghcv.data.model.RestingHeartRateMetric
+import com.marlobell.ghcv.data.model.SleepMetric
+import com.marlobell.ghcv.data.model.SleepStage
+import com.marlobell.ghcv.data.model.WeightMetric
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -18,33 +28,70 @@ class HealthConnectRepository(
         val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
         val endOfDay = Instant.now()
 
-        val response = healthConnectClient.readRecords(
-            ReadRecordsRequest(
-                recordType = StepsRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+        return try {
+            // Read raw records
+            val recordsResponse = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = StepsRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                )
             )
-        )
-
-        return response.records.sumOf { it.count }
+            
+            // Group by data source and pick the highest count (prioritize wearables)
+            val sourceGroups = recordsResponse.records.groupBy { it.metadata.dataOrigin.packageName }
+            
+            val sourceTotals = sourceGroups.map { (source, records) ->
+                source to records.sumOf { it.count }
+            }.toMap()
+            
+            // Priority: Oura Ring > Google Fit > Android system
+            val preferredSources = listOf("com.ouraring.oura", "com.google.android.apps.fitness", "android")
+            val selectedSource = preferredSources.firstOrNull { it in sourceTotals.keys }
+            
+            if (selectedSource != null) {
+                sourceTotals[selectedSource] ?: 0L
+            } else {
+                sourceTotals.values.maxOrNull() ?: 0L
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("HealthConnect", "Error fetching steps", e)
+            0L
+        }
     }
 
     suspend fun getStepsForDate(date: LocalDate): Long {
         val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
         val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
 
-        val response = healthConnectClient.readRecords(
-            ReadRecordsRequest(
-                recordType = StepsRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+        return try {
+            val recordsResponse = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = StepsRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                )
             )
-        )
-
-        return response.records.sumOf { it.count }
+            
+            // Group by source and pick highest (prioritize wearables)
+            val sourceTotals = recordsResponse.records
+                .groupBy { it.metadata.dataOrigin.packageName }
+                .mapValues { (_, records) -> records.sumOf { it.count } }
+            
+            val preferredSources = listOf("com.ouraring.oura", "com.google.android.apps.fitness", "android")
+            val selectedSource = preferredSources.firstOrNull { it in sourceTotals.keys }
+            
+            if (selectedSource != null) {
+                sourceTotals[selectedSource] ?: 0L
+            } else {
+                sourceTotals.values.maxOrNull() ?: 0L
+            }
+        } catch (e: Exception) {
+            0L
+        }
     }
 
     suspend fun getLatestHeartRate(): HeartRateMetric? {
         val endTime = Instant.now()
-        val startTime = endTime.minus(1, ChronoUnit.HOURS)
+        val startTime = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
@@ -127,14 +174,34 @@ class HealthConnectRepository(
         val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
         val endOfDay = Instant.now()
 
-        val response = healthConnectClient.readRecords(
-            ReadRecordsRequest(
-                recordType = ActiveCaloriesBurnedRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+        return try {
+            val response = healthConnectClient.aggregate(
+                androidx.health.connect.client.request.AggregateRequest(
+                    metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
+                    timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                )
             )
-        )
+            response[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
+        } catch (e: Exception) {
+            0.0
+        }
+    }
 
-        return response.records.sumOf { it.energy.inKilocalories }
+    suspend fun getActiveCaloriesForDate(date: LocalDate): Double {
+        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
+
+        return try {
+            val response = healthConnectClient.aggregate(
+                androidx.health.connect.client.request.AggregateRequest(
+                    metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
+                    timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                )
+            )
+            response[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
+        } catch (e: Exception) {
+            0.0
+        }
     }
 
     suspend fun getLatestWeight(): WeightMetric? {

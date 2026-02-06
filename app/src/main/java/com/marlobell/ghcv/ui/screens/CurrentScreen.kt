@@ -42,6 +42,7 @@ fun CurrentScreen(
         }
     )
     
+    val healthData by viewModel.healthData.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     
     Column(
@@ -61,7 +62,7 @@ fun CurrentScreen(
                 style = MaterialTheme.typography.headlineMedium
             )
             
-            uiState.lastUpdated?.let { timestamp ->
+            healthData.lastUpdated?.let { timestamp ->
                 val minutesAgo = Duration.between(timestamp, Instant.now()).toMinutes()
                 Text(
                     text = if (minutesAgo < 1) "Just now" else "$minutesAgo min ago",
@@ -71,40 +72,28 @@ fun CurrentScreen(
             }
         }
         
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxWidth().height(200.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (uiState.error != null) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Error: ${uiState.error}",
-                    color = MaterialTheme.colorScheme.error
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = { viewModel.refresh() }) {
-                    Text("Retry")
+        when (uiState) {
+            is com.marlobell.ghcv.ui.UiState.Loading, is com.marlobell.ghcv.ui.UiState.Uninitialized -> {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
                 }
             }
-        } else {
-            HealthMetricCard(
+            else -> {
+                HealthMetricCard(
                 title = "Steps",
-                value = "${uiState.steps}",
+                value = "${healthData.steps}",
                 icon = Icons.AutoMirrored.Filled.DirectionsWalk,
-                trend = uiState.stepsTrend,
+                trend = healthData.stepsTrend,
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             )
             
-            uiState.heartRate?.let { hr ->
+            healthData.heartRate?.let { hr ->
                 val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-                val timeStr = uiState.heartRateTimestamp?.atZone(ZoneId.systemDefault())
+                val timeStr = healthData.heartRateTimestamp?.atZone(ZoneId.systemDefault())
                     ?.format(timeFormatter) ?: ""
                 
                 HealthMetricCard(
@@ -116,7 +105,7 @@ fun CurrentScreen(
                 )
             }
             
-            uiState.sleepLastNight?.let { sleepMinutes ->
+            healthData.sleepLastNight?.let { sleepMinutes ->
                 val hours = sleepMinutes / 60
                 val minutes = sleepMinutes % 60
                 
@@ -130,15 +119,15 @@ fun CurrentScreen(
             
             HealthMetricCard(
                 title = "Active Calories",
-                value = String.format(Locale.US, "%.0f", uiState.activeCalories),
+                value = String.format(Locale.US, "%.0f", healthData.activeCalories),
                 unit = "kcal",
                 icon = Icons.Filled.LocalFireDepartment
             )
             
             // Vitals Section
-            if (uiState.bloodPressure.hasData || uiState.bloodGlucose.hasData || 
-                uiState.bodyTemperature.hasData || uiState.oxygenSaturation.hasData ||
-                uiState.restingHeartRate.hasData || uiState.respiratoryRate.hasData) {
+            if (healthData.bloodPressure.hasData || healthData.bloodGlucose.hasData || 
+                healthData.bodyTemperature.hasData || healthData.oxygenSaturation.hasData ||
+                healthData.restingHeartRate.hasData || healthData.respiratoryRate.hasData) {
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -149,111 +138,112 @@ fun CurrentScreen(
             }
             
             // Blood Pressure
-            if (uiState.bloodPressure.hasData) {
-                uiState.bloodPressure.latest?.let { bp ->
+            if (healthData.bloodPressure.hasData) {
+                healthData.bloodPressure.latest?.let { bp ->
                     VitalsMetricCard(
                         title = "Blood Pressure",
                         value = "${bp.systolic.toInt()}/${bp.diastolic.toInt()}",
                         unit = "mmHg",
                         icon = Icons.Filled.Favorite,
-                        timestamp = uiState.bloodPressure.latestTimestamp,
-                        dailyStats = if (uiState.bloodPressure.readingCount > 1) {
-                            "Avg: ${uiState.bloodPressure.dailyAvg?.toInt() ?: "--"} | " +
-                            "Min: ${uiState.bloodPressure.dailyMin?.toInt() ?: "--"} | " +
-                            "Max: ${uiState.bloodPressure.dailyMax?.toInt() ?: "--"}"
+                        timestamp = healthData.bloodPressure.latestTimestamp,
+                        dailyStats = if (healthData.bloodPressure.readingCount > 1) {
+                            "Avg: ${healthData.bloodPressure.dailyAvg?.toInt() ?: "--"} | " +
+                            "Min: ${healthData.bloodPressure.dailyMin?.toInt() ?: "--"} | " +
+                            "Max: ${healthData.bloodPressure.dailyMax?.toInt() ?: "--"}"
                         } else null
                     )
                 }
             }
             
             // Blood Glucose
-            if (uiState.bloodGlucose.hasData) {
-                uiState.bloodGlucose.latest?.let { glucose ->
+            if (healthData.bloodGlucose.hasData) {
+                healthData.bloodGlucose.latest?.let { glucose ->
                     VitalsMetricCard(
                         title = "Blood Glucose",
                         value = String.format(Locale.US, "%.0f", glucose),
                         unit = "mg/dL",
                         icon = Icons.Filled.Bloodtype,
-                        timestamp = uiState.bloodGlucose.latestTimestamp,
-                        dailyStats = if (uiState.bloodGlucose.readingCount > 1) {
-                            "Avg: ${String.format(Locale.US, "%.0f", uiState.bloodGlucose.dailyAvg ?: 0.0)} | " +
-                            "Min: ${String.format(Locale.US, "%.0f", uiState.bloodGlucose.dailyMin ?: 0.0)} | " +
-                            "Max: ${String.format(Locale.US, "%.0f", uiState.bloodGlucose.dailyMax ?: 0.0)}"
+                        timestamp = healthData.bloodGlucose.latestTimestamp,
+                        dailyStats = if (healthData.bloodGlucose.readingCount > 1) {
+                            "Avg: ${String.format(Locale.US, "%.0f", healthData.bloodGlucose.dailyAvg ?: 0.0)} | " +
+                            "Min: ${String.format(Locale.US, "%.0f", healthData.bloodGlucose.dailyMin ?: 0.0)} | " +
+                            "Max: ${String.format(Locale.US, "%.0f", healthData.bloodGlucose.dailyMax ?: 0.0)}"
                         } else null
                     )
                 }
             }
             
             // Body Temperature
-            if (uiState.bodyTemperature.hasData) {
-                uiState.bodyTemperature.latest?.let { temp ->
+            if (healthData.bodyTemperature.hasData) {
+                healthData.bodyTemperature.latest?.let { temp ->
                     VitalsMetricCard(
                         title = "Body Temperature",
                         value = String.format(Locale.US, "%.1f", temp),
                         unit = "°C",
                         icon = Icons.Filled.Thermostat,
-                        timestamp = uiState.bodyTemperature.latestTimestamp,
-                        dailyStats = if (uiState.bodyTemperature.readingCount > 1) {
-                            "Avg: ${String.format(Locale.US, "%.1f", uiState.bodyTemperature.dailyAvg ?: 0.0)} | " +
-                            "Min: ${String.format(Locale.US, "%.1f", uiState.bodyTemperature.dailyMin ?: 0.0)} | " +
-                            "Max: ${String.format(Locale.US, "%.1f", uiState.bodyTemperature.dailyMax ?: 0.0)}"
+                        timestamp = healthData.bodyTemperature.latestTimestamp,
+                        dailyStats = if (healthData.bodyTemperature.readingCount > 1) {
+                            "Avg: ${String.format(Locale.US, "%.1f", healthData.bodyTemperature.dailyAvg ?: 0.0)} | " +
+                            "Min: ${String.format(Locale.US, "%.1f", healthData.bodyTemperature.dailyMin ?: 0.0)} | " +
+                            "Max: ${String.format(Locale.US, "%.1f", healthData.bodyTemperature.dailyMax ?: 0.0)}"
                         } else null
                     )
                 }
             }
             
             // Oxygen Saturation
-            if (uiState.oxygenSaturation.hasData) {
-                uiState.oxygenSaturation.latest?.let { spo2 ->
+            if (healthData.oxygenSaturation.hasData) {
+                healthData.oxygenSaturation.latest?.let { spo2 ->
                     VitalsMetricCard(
                         title = "Oxygen Saturation",
                         value = String.format(Locale.US, "%.0f", spo2),
                         unit = "%",
                         icon = Icons.Filled.Air,
-                        timestamp = uiState.oxygenSaturation.latestTimestamp,
-                        dailyStats = if (uiState.oxygenSaturation.readingCount > 1) {
-                            "Avg: ${String.format(Locale.US, "%.0f", uiState.oxygenSaturation.dailyAvg ?: 0.0)} | " +
-                            "Min: ${String.format(Locale.US, "%.0f", uiState.oxygenSaturation.dailyMin ?: 0.0)} | " +
-                            "Max: ${String.format(Locale.US, "%.0f", uiState.oxygenSaturation.dailyMax ?: 0.0)}"
+                        timestamp = healthData.oxygenSaturation.latestTimestamp,
+                        dailyStats = if (healthData.oxygenSaturation.readingCount > 1) {
+                            "Avg: ${String.format(Locale.US, "%.0f", healthData.oxygenSaturation.dailyAvg ?: 0.0)} | " +
+                            "Min: ${String.format(Locale.US, "%.0f", healthData.oxygenSaturation.dailyMin ?: 0.0)} | " +
+                            "Max: ${String.format(Locale.US, "%.0f", healthData.oxygenSaturation.dailyMax ?: 0.0)}"
                         } else null
                     )
                 }
             }
             
             // Resting Heart Rate
-            if (uiState.restingHeartRate.hasData) {
-                uiState.restingHeartRate.latest?.let { rhr ->
+            if (healthData.restingHeartRate.hasData) {
+                healthData.restingHeartRate.latest?.let { rhr ->
                     VitalsMetricCard(
                         title = "Resting Heart Rate",
                         value = "$rhr",
                         unit = "bpm",
                         icon = Icons.Filled.MonitorHeart,
-                        timestamp = uiState.restingHeartRate.latestTimestamp,
-                        dailyStats = if (uiState.restingHeartRate.readingCount > 1) {
-                            "Avg: ${uiState.restingHeartRate.dailyAvg?.toInt() ?: "--"} | " +
-                            "Min: ${uiState.restingHeartRate.dailyMin?.toInt() ?: "--"} | " +
-                            "Max: ${uiState.restingHeartRate.dailyMax?.toInt() ?: "--"}"
+                        timestamp = healthData.restingHeartRate.latestTimestamp,
+                        dailyStats = if (healthData.restingHeartRate.readingCount > 1) {
+                            "Avg: ${healthData.restingHeartRate.dailyAvg?.toInt() ?: "--"} | " +
+                            "Min: ${healthData.restingHeartRate.dailyMin?.toInt() ?: "--"} | " +
+                            "Max: ${healthData.restingHeartRate.dailyMax?.toInt() ?: "--"}"
                         } else null
                     )
                 }
             }
             
             // Respiratory Rate
-            if (uiState.respiratoryRate.hasData) {
-                uiState.respiratoryRate.latest?.let { rr ->
+            if (healthData.respiratoryRate.hasData) {
+                healthData.respiratoryRate.latest?.let { rr ->
                     VitalsMetricCard(
                         title = "Respiratory Rate",
                         value = String.format(Locale.US, "%.0f", rr),
                         unit = "breaths/min",
                         icon = Icons.Filled.Air,
-                        timestamp = uiState.respiratoryRate.latestTimestamp,
-                        dailyStats = if (uiState.respiratoryRate.readingCount > 1) {
-                            "Avg: ${String.format(Locale.US, "%.0f", uiState.respiratoryRate.dailyAvg ?: 0.0)} | " +
-                            "Min: ${String.format(Locale.US, "%.0f", uiState.respiratoryRate.dailyMin ?: 0.0)} | " +
-                            "Max: ${String.format(Locale.US, "%.0f", uiState.respiratoryRate.dailyMax ?: 0.0)}"
+                        timestamp = healthData.respiratoryRate.latestTimestamp,
+                        dailyStats = if (healthData.respiratoryRate.readingCount > 1) {
+                            "Avg: ${String.format(Locale.US, "%.0f", healthData.respiratoryRate.dailyAvg ?: 0.0)} | " +
+                            "Min: ${String.format(Locale.US, "%.0f", healthData.respiratoryRate.dailyMin ?: 0.0)} | " +
+                            "Max: ${String.format(Locale.US, "%.0f", healthData.respiratoryRate.dailyMax ?: 0.0)}"
                         } else null
                     )
                 }
+            }
             }
         }
     }
@@ -459,4 +449,3 @@ fun VitalsMetricCard(
         }
     }
 }
-

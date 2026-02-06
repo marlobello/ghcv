@@ -24,7 +24,6 @@ import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
 import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 @Composable
 fun TrendsScreen(
