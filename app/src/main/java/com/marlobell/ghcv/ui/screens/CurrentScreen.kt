@@ -20,9 +20,12 @@ import com.marlobell.ghcv.data.repository.HealthConnectRepository
 import com.marlobell.ghcv.data.model.*
 import com.marlobell.ghcv.ui.components.CollapsibleSection
 import com.marlobell.ghcv.ui.components.SmallMetricCard
+import com.marlobell.ghcv.ui.model.MetricCardIds
+import com.marlobell.ghcv.ui.navigation.Screen
 import com.marlobell.ghcv.ui.viewmodel.CurrentViewModel
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -30,6 +33,7 @@ import java.util.Locale
 @Composable
 fun CurrentScreen(
     healthConnectManager: HealthConnectManager,
+    navController: androidx.navigation.NavHostController,
     modifier: Modifier = Modifier
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -120,7 +124,16 @@ fun CurrentScreen(
                         icon = Icons.AutoMirrored.Filled.DirectionsWalk,
                         comparison = healthData.stepsComparison,
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        onClick = {
+                            navController.navigate(
+                                Screen.Historical.createRoute(
+                                    date = LocalDate.now().toString(),
+                                    expandCard = MetricCardIds.STEPS,
+                                    scrollToCard = MetricCardIds.STEPS
+                                )
+                            )
+                        }
                     )
                 }
             
@@ -135,7 +148,16 @@ fun CurrentScreen(
                         unit = "bpm",
                         icon = Icons.Filled.Favorite,
                         subtitle = if (timeStr.isNotEmpty()) "Measured at $timeStr" else null,
-                        comparison = healthData.heartRateComparison
+                        comparison = healthData.heartRateComparison,
+                        onClick = {
+                            navController.navigate(
+                                Screen.Historical.createRoute(
+                                    date = LocalDate.now().toString(),
+                                    expandCard = MetricCardIds.HEART_RATE,
+                                    scrollToCard = MetricCardIds.HEART_RATE
+                                )
+                            )
+                        }
                     )
                 }
                 
@@ -148,7 +170,16 @@ fun CurrentScreen(
                         value = "${hours}h ${minutes}m",
                         icon = Icons.Filled.Bedtime,
                         subtitle = "Total sleep duration",
-                        comparison = healthData.sleepComparison
+                        comparison = healthData.sleepComparison,
+                        onClick = {
+                            navController.navigate(
+                                Screen.Historical.createRoute(
+                                    date = LocalDate.now().toString(),
+                                    expandCard = MetricCardIds.SLEEP,
+                                    scrollToCard = MetricCardIds.SLEEP
+                                )
+                            )
+                        }
                     )
                 }
                 
@@ -158,7 +189,16 @@ fun CurrentScreen(
                         value = String.format(Locale.US, "%.0f", healthData.activeCalories),
                         unit = "kcal",
                         icon = Icons.Filled.LocalFireDepartment,
-                        comparison = healthData.caloriesComparison
+                        comparison = healthData.caloriesComparison,
+                        onClick = {
+                            navController.navigate(
+                                Screen.Historical.createRoute(
+                                    date = LocalDate.now().toString(),
+                                    expandCard = MetricCardIds.ACTIVE_CALORIES,
+                                    scrollToCard = MetricCardIds.ACTIVE_CALORIES
+                                )
+                            )
+                        }
                     )
                 }
                 
@@ -176,7 +216,16 @@ fun CurrentScreen(
                                 "Min: ${healthData.bloodPressure.dailyMin?.toInt() ?: "--"} | " +
                                 "Max: ${healthData.bloodPressure.dailyMax?.toInt() ?: "--"}"
                             } else null,
-                            comparison = healthData.bloodPressureSystolicComparison
+                            comparison = healthData.bloodPressureSystolicComparison,
+                            onClick = {
+                                navController.navigate(
+                                    Screen.Historical.createRoute(
+                                        date = LocalDate.now().toString(),
+                                        expandCard = MetricCardIds.BLOOD_PRESSURE,
+                                        scrollToCard = MetricCardIds.BLOOD_PRESSURE
+                                    )
+                                )
+                            }
                         )
                     }
                 }
@@ -194,7 +243,16 @@ fun CurrentScreen(
                                 "Min: ${String.format(Locale.US, "%.0f", healthData.bloodGlucose.dailyMin ?: 0.0)} | " +
                                 "Max: ${String.format(Locale.US, "%.0f", healthData.bloodGlucose.dailyMax ?: 0.0)}"
                             } else null,
-                            comparison = healthData.bloodGlucoseComparison
+                            comparison = healthData.bloodGlucoseComparison,
+                            onClick = {
+                                navController.navigate(
+                                    Screen.Historical.createRoute(
+                                        date = LocalDate.now().toString(),
+                                        expandCard = MetricCardIds.BLOOD_GLUCOSE,
+                                        scrollToCard = MetricCardIds.BLOOD_GLUCOSE
+                                    )
+                                )
+                            }
                         )
                     }
                 }
@@ -212,7 +270,16 @@ fun CurrentScreen(
                                 "Min: ${String.format(Locale.US, "%.1f", healthData.bodyTemperature.dailyMin ?: 0.0)} | " +
                                 "Max: ${String.format(Locale.US, "%.1f", healthData.bodyTemperature.dailyMax ?: 0.0)}"
                             } else null,
-                            comparison = healthData.bodyTemperatureComparison
+                            comparison = healthData.bodyTemperatureComparison,
+                            onClick = {
+                                navController.navigate(
+                                    Screen.Historical.createRoute(
+                                        date = LocalDate.now().toString(),
+                                        expandCard = MetricCardIds.BODY_TEMPERATURE,
+                                        scrollToCard = MetricCardIds.BODY_TEMPERATURE
+                                    )
+                                )
+                            }
                         )
                     }
                 }
@@ -230,7 +297,16 @@ fun CurrentScreen(
                                 "Min: ${String.format(Locale.US, "%.0f", healthData.oxygenSaturation.dailyMin ?: 0.0)} | " +
                                 "Max: ${String.format(Locale.US, "%.0f", healthData.oxygenSaturation.dailyMax ?: 0.0)}"
                             } else null,
-                            comparison = healthData.oxygenSaturationComparison
+                            comparison = healthData.oxygenSaturationComparison,
+                            onClick = {
+                                navController.navigate(
+                                    Screen.Historical.createRoute(
+                                        date = LocalDate.now().toString(),
+                                        expandCard = MetricCardIds.OXYGEN_SATURATION,
+                                        scrollToCard = MetricCardIds.OXYGEN_SATURATION
+                                    )
+                                )
+                            }
                         )
                     }
                 }
@@ -248,7 +324,16 @@ fun CurrentScreen(
                                 "Min: ${healthData.restingHeartRate.dailyMin?.toInt() ?: "--"} | " +
                                 "Max: ${healthData.restingHeartRate.dailyMax?.toInt() ?: "--"}"
                             } else null,
-                            comparison = healthData.restingHeartRateComparison
+                            comparison = healthData.restingHeartRateComparison,
+                            onClick = {
+                                navController.navigate(
+                                    Screen.Historical.createRoute(
+                                        date = LocalDate.now().toString(),
+                                        expandCard = MetricCardIds.RESTING_HEART_RATE,
+                                        scrollToCard = MetricCardIds.RESTING_HEART_RATE
+                                    )
+                                )
+                            }
                         )
                     }
                 }
@@ -266,9 +351,56 @@ fun CurrentScreen(
                                 "Min: ${String.format(Locale.US, "%.0f", healthData.respiratoryRate.dailyMin ?: 0.0)} | " +
                                 "Max: ${String.format(Locale.US, "%.0f", healthData.respiratoryRate.dailyMax ?: 0.0)}"
                             } else null,
-                            comparison = healthData.respiratoryRateComparison
+                            comparison = healthData.respiratoryRateComparison,
+                            onClick = {
+                                navController.navigate(
+                                    Screen.Historical.createRoute(
+                                        date = LocalDate.now().toString(),
+                                        expandCard = MetricCardIds.RESPIRATORY_RATE,
+                                        scrollToCard = MetricCardIds.RESPIRATORY_RATE
+                                    )
+                                )
+                            }
                         )
                     }
+                }
+                
+                // Distance Card
+                if (healthData.distance > 0) {
+                    HealthMetricCard(
+                        title = "Distance",
+                        value = String.format(Locale.US, "%.2f", healthData.distance / 1000),
+                        unit = "km",
+                        icon = Icons.Filled.Place,
+                        onClick = {
+                            navController.navigate(
+                                Screen.Historical.createRoute(
+                                    date = LocalDate.now().toString(),
+                                    expandCard = MetricCardIds.DISTANCE,
+                                    scrollToCard = MetricCardIds.DISTANCE
+                                )
+                            )
+                        }
+                    )
+                }
+                
+                // Exercise Sessions Card
+                if (healthData.exerciseSessions > 0) {
+                    HealthMetricCard(
+                        title = "Exercise Sessions",
+                        value = "${healthData.exerciseSessions}",
+                        unit = if (healthData.exerciseSessions == 1) "session" else "sessions",
+                        icon = Icons.Filled.FitnessCenter,
+                        onClick = {
+                            navController.navigate(
+                                Screen.Historical.createRoute(
+                                    date = LocalDate.now().toString(),
+                                    expandCard = MetricCardIds.EXERCISE,
+                                    scrollToCard = MetricCardIds.EXERCISE
+                                )
+                            )
+                        }
+                    )
                 }
                 
                 // SECTION 2: Permission not granted (collapsible)
@@ -334,13 +466,15 @@ fun HealthMetricCard(
     subtitle: String? = null,
     comparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
     containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceVariant,
-    contentColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant
+    contentColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    onClick: (() -> Unit)? = null
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = containerColor
-        )
+        ),
+        onClick = onClick ?: {}
     ) {
         Row(
             modifier = Modifier.padding(20.dp).fillMaxWidth(),
@@ -478,13 +612,15 @@ fun VitalsMetricCard(
     timestamp: Instant?,
     modifier: Modifier = Modifier,
     dailyStats: String? = null,
-    comparison: com.marlobell.ghcv.ui.model.MetricComparison? = null
+    comparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
+    onClick: (() -> Unit)? = null
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        ),
+        onClick = onClick ?: {}
     ) {
         Row(
             modifier = Modifier.padding(20.dp).fillMaxWidth(),

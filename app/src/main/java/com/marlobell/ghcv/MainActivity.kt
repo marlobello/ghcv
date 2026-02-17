@@ -41,10 +41,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.HealthConnectClient
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.marlobell.ghcv.data.HealthConnectManager
 import com.marlobell.ghcv.ui.navigation.Screen
 import com.marlobell.ghcv.ui.navigation.bottomNavItems
@@ -192,17 +194,36 @@ fun MainNavigationScreen(healthConnectManager: HealthConnectManager) {
                 val currentDestination = navBackStackEntry?.destination
                 
                 bottomNavItems.forEach { screen ->
+                    // Check if current destination matches this screen
+                    // For routes with parameters, the destination.route will be the pattern
+                    val isSelected = when {
+                        // For Historical screen, check if destination route starts with "historical"
+                        screen is Screen.Historical -> currentDestination?.route?.startsWith("historical") == true
+                        // For other screens, exact match
+                        else -> currentDestination?.route == screen.route
+                    }
+                    
                     NavigationBarItem(
                         icon = { Icon(screen.icon, contentDescription = screen.title) },
                         label = { Text(screen.title) },
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                        selected = isSelected,
                         onClick = {
-                            navController.navigate(screen.route) {
+                            // Use baseRoute for navigation to avoid issues with parameterized routes
+                            val targetRoute = if (screen is Screen.Historical) {
+                                screen.baseRoute  // Navigate to "historical" without parameters
+                            } else {
+                                screen.route
+                            }
+                            
+                            Log.d("Navigation", "Bottom nav clicked: ${screen.title}, navigating to: $targetRoute, current route: ${currentDestination?.route}")
+                            
+                            navController.navigate(targetRoute) {
+                                // Clear the back stack to the start destination
                                 popUpTo(navController.graph.startDestinationId) {
-                                    saveState = true
+                                    saveState = false  // Don't save state when popping
                                 }
                                 launchSingleTop = true
-                                restoreState = true
+                                restoreState = false  // Don't restore state - always show fresh screen
                             }
                         }
                     )
@@ -216,10 +237,38 @@ fun MainNavigationScreen(healthConnectManager: HealthConnectManager) {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Current.route) {
-                CurrentScreen(healthConnectManager)
+                CurrentScreen(healthConnectManager, navController)
             }
-            composable(Screen.Historical.route) {
-                HistoricalScreen(healthConnectManager)
+            composable(
+                route = Screen.Historical.route,
+                arguments = listOf(
+                    navArgument("date") { 
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                    navArgument("expandCard") { 
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                    navArgument("scrollToCard") { 
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { backStackEntry ->
+                val date = backStackEntry.arguments?.getString("date")
+                val expandCard = backStackEntry.arguments?.getString("expandCard")
+                val scrollToCard = backStackEntry.arguments?.getString("scrollToCard")
+                
+                HistoricalScreen(
+                    healthConnectManager = healthConnectManager,
+                    initialDate = date,
+                    initialExpandedCard = expandCard,
+                    scrollToCard = scrollToCard
+                )
             }
             composable(Screen.Trends.route) {
                 TrendsScreen(healthConnectManager)

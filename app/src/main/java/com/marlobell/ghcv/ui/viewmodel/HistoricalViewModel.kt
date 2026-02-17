@@ -2,7 +2,13 @@ package com.marlobell.ghcv.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.marlobell.ghcv.data.model.BloodGlucoseMetric
+import com.marlobell.ghcv.data.model.BloodPressureMetric
+import com.marlobell.ghcv.data.model.BodyTemperatureMetric
 import com.marlobell.ghcv.data.model.HeartRateMetric
+import com.marlobell.ghcv.data.model.OxygenSaturationMetric
+import com.marlobell.ghcv.data.model.RespiratoryRateMetric
+import com.marlobell.ghcv.data.model.RestingHeartRateMetric
 import com.marlobell.ghcv.data.model.SleepMetric
 import com.marlobell.ghcv.data.repository.HealthConnectRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +29,12 @@ data class HistoricalHealthData(
     val activeCalories: Double = 0.0,
     val distance: Double = 0.0,
     val exerciseSessions: Int = 0,
+    val bloodPressureData: List<BloodPressureMetric> = emptyList(),
+    val bloodGlucoseData: List<BloodGlucoseMetric> = emptyList(),
+    val bodyTemperatureData: List<BodyTemperatureMetric> = emptyList(),
+    val oxygenSaturationData: List<OxygenSaturationMetric> = emptyList(),
+    val restingHeartRateData: List<RestingHeartRateMetric> = emptyList(),
+    val respiratoryRateData: List<RespiratoryRateMetric> = emptyList(),
     val previousDaySteps: Long = 0,
     val isLoading: Boolean = true,
     val error: String? = null,
@@ -30,10 +42,15 @@ data class HistoricalHealthData(
 )
 
 class HistoricalViewModel(
-    private val repository: HealthConnectRepository
+    private val repository: HealthConnectRepository,
+    initialExpandedCard: String? = null
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(HistoricalHealthData())
+    private val _uiState = MutableStateFlow(
+        HistoricalHealthData(
+            expandedSections = initialExpandedCard?.let { setOf(it) } ?: emptySet()
+        )
+    )
     val uiState: StateFlow<HistoricalHealthData> = _uiState.asStateFlow()
 
     init {
@@ -61,6 +78,12 @@ class HistoricalViewModel(
                 val distance = repository.getDistanceForDate(date)
                 val activeCalories = repository.getActiveCaloriesForDate(date)
                 val exercises = repository.getExerciseSessionsForDate(date)
+                val bloodPressure = repository.getBloodPressureForDate(date)
+                val bloodGlucose = repository.getBloodGlucoseForDate(date)
+                val bodyTemperature = repository.getBodyTemperatureForDate(date)
+                val oxygenSaturation = repository.getOxygenSaturationForDate(date)
+                val restingHeartRate = repository.getRestingHeartRateForDate(date)
+                val respiratoryRate = repository.getRespiratoryRateForDate(date)
                 val previousDay = repository.getStepsForDate(date.minusDays(1))
 
                 _uiState.value = HistoricalHealthData(
@@ -75,6 +98,12 @@ class HistoricalViewModel(
                     activeCalories = activeCalories,
                     distance = distance,
                     exerciseSessions = exercises.size,
+                    bloodPressureData = bloodPressure,
+                    bloodGlucoseData = bloodGlucose,
+                    bodyTemperatureData = bodyTemperature,
+                    oxygenSaturationData = oxygenSaturation,
+                    restingHeartRateData = restingHeartRate,
+                    respiratoryRateData = respiratoryRate,
                     previousDaySteps = previousDay,
                     isLoading = false,
                     expandedSections = _uiState.value.expandedSections

@@ -36,6 +36,8 @@ data class CurrentHealthData(
     val todayAvgHeartRate: Long? = null,
     val activeCalories: Double = 0.0,
     val sleepLastNight: Long? = null,
+    val distance: Double = 0.0,
+    val exerciseSessions: Int = 0,
     val sevenDayAvgSteps: Long = 0,
     val sevenDayAvgSleep: Long = 0,
     val sevenDayAvgCalories: Double = 0.0,
@@ -263,6 +265,20 @@ class CurrentViewModel(
                     repository.getTodayActiveCalories()
                 } catch (e: Exception) {
                     0.0
+                }
+                
+                val distance = try {
+                    repository.getTodayDistance()
+                } catch (e: Exception) {
+                    Log.w("CurrentViewModel", "Failed to fetch distance", e)
+                    0.0
+                }
+                
+                val exerciseSessions = try {
+                    repository.getTodayExerciseSessions().size
+                } catch (e: Exception) {
+                    Log.w("CurrentViewModel", "Failed to fetch exercise sessions", e)
+                    0
                 }
                 
                 // Calculate 7-day average steps
@@ -593,6 +609,8 @@ class CurrentViewModel(
                     todayAvgHeartRate = todayAvgHeartRate,
                     activeCalories = calories,
                     sleepLastNight = sleepData?.durationMinutes,
+                    distance = distance,
+                    exerciseSessions = exerciseSessions,
                     sevenDayAvgSteps = sevenDayAvgSteps,
                     sevenDayAvgSleep = sevenDayAvgSleep,
                     sevenDayAvgCalories = sevenDayAvgCalories,

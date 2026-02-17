@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.marlobell.ghcv.data.HealthConnectManager
 import com.marlobell.ghcv.data.repository.HealthConnectRepository
 import com.marlobell.ghcv.ui.components.SleepStageChart
+import com.marlobell.ghcv.ui.model.MetricCardIds
 import com.marlobell.ghcv.ui.viewmodel.HistoricalViewModel
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottomAxis
@@ -33,7 +34,10 @@ import java.util.Locale
 @Composable
 fun HistoricalScreen(
     healthConnectManager: HealthConnectManager,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    initialDate: String? = null,
+    initialExpandedCard: String? = null,
+    scrollToCard: String? = null
 ) {
     val repository = remember {
         HealthConnectRepository(healthConnectManager.getClient())
@@ -43,10 +47,22 @@ fun HistoricalScreen(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                 @Suppress("UNCHECKED_CAST")
-                return HistoricalViewModel(repository) as T
+                return HistoricalViewModel(repository, initialExpandedCard) as T
             }
         }
     )
+    
+    // Handle initial date if provided
+    LaunchedEffect(initialDate) {
+        if (initialDate != null) {
+            try {
+                val date = LocalDate.parse(initialDate)
+                viewModel.loadDataForDate(date)
+            } catch (e: Exception) {
+                // Invalid date format, ignore and use default
+            }
+        }
+    }
     
     val uiState by viewModel.uiState.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
@@ -114,8 +130,8 @@ fun HistoricalScreen(
                 title = "Steps",
                 icon = Icons.AutoMirrored.Filled.DirectionsWalk,
                 value = "${uiState.steps}",
-                isExpanded = uiState.expandedSections.contains("steps"),
-                onToggle = { viewModel.toggleSection("steps") },
+                isExpanded = uiState.expandedSections.contains(MetricCardIds.STEPS),
+                onToggle = { viewModel.toggleSection(MetricCardIds.STEPS) },
                 comparisonText = if (uiState.previousDaySteps > 0) {
                     val diff = uiState.steps - uiState.previousDaySteps
                     val sign = if (diff >= 0) "+" else ""
@@ -136,8 +152,8 @@ fun HistoricalScreen(
                     icon = Icons.Filled.Favorite,
                     value = "${String.format(Locale.US, "%.1f", uiState.averageHeartRate)} bpm",
                     subtitle = "${uiState.minHeartRate}-${uiState.maxHeartRate} bpm range",
-                    isExpanded = uiState.expandedSections.contains("heartrate"),
-                    onToggle = { viewModel.toggleSection("heartrate") }
+                    isExpanded = uiState.expandedSections.contains(MetricCardIds.HEART_RATE),
+                    onToggle = { viewModel.toggleSection(MetricCardIds.HEART_RATE) }
                 ) {
                     Column {
                         Text(
@@ -173,8 +189,8 @@ fun HistoricalScreen(
                     title = "Sleep",
                     icon = Icons.Filled.Bedtime,
                     value = "${hours}h ${minutes}m",
-                    isExpanded = uiState.expandedSections.contains("sleep"),
-                    onToggle = { viewModel.toggleSection("sleep") }
+                    isExpanded = uiState.expandedSections.contains(MetricCardIds.SLEEP),
+                    onToggle = { viewModel.toggleSection(MetricCardIds.SLEEP) }
                 ) {
                     Column {
                         Text(
@@ -199,33 +215,57 @@ fun HistoricalScreen(
                 }
             }
             
-            // Distance Card (if available)
-            if (uiState.distance > 0) {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Place,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Column {
+            // Active Calories Card
+            if (uiState.activeCalories > 0) {
+                ExpandableMetricCard(
+                    title = "Active Calories",
+                    icon = Icons.Filled.LocalFireDepartment,
+                    value = "${String.format(Locale.US, "%.0f", uiState.activeCalories)} kcal",
+                    isExpanded = uiState.expandedSections.contains(MetricCardIds.ACTIVE_CALORIES),
+                    onToggle = { viewModel.toggleSection(MetricCardIds.ACTIVE_CALORIES) }
+                ) {
+                    Text(
+                        text = "Total active calories burned throughout the day",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            // Blood Pressure Card
+            if (uiState.bloodPressureData.isNotEmpty()) {
+                val avgSystolic = uiState.bloodPressureData.map { it.systolic }.average()
+                val avgDiastolic = uiState.bloodPressureData.map { it.diastolic }.average()
+                
+                ExpandableMetricCard(
+                    title = "Blood Pressure",
+                    icon = Icons.Filled.MonitorHeart,
+                    value = "${String.format(Locale.US, "%.0f", avgSystolic)}/${String.format(Locale.US, "%.0f", avgDiastolic)} mmHg",
+                    subtitle = "${uiState.bloodPressureData.size} readings",
+                    isExpanded = uiState.expandedSections.contains(MetricCardIds.BLOOD_PRESSURE),
+                    onToggle = { viewModel.toggleSection(MetricCardIds.BLOOD_PRESSURE) }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Readings",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        uiState.bloodPressureData.sortedByDescending { it.timestamp }.forEach { reading ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
                                 Text(
-                                    text = "Distance",
-                                    style = MaterialTheme.typography.titleMedium
+                                    text = "${String.format(Locale.US, "%.0f", reading.systolic)}/${String.format(Locale.US, "%.0f", reading.diastolic)} mmHg",
+                                    style = MaterialTheme.typography.bodyMedium
                                 )
                                 Text(
-                                    text = "${String.format(Locale.US, "%.2f", uiState.distance / 1000)} km",
-                                    style = MaterialTheme.typography.headlineSmall
+                                    text = reading.timestamp
+                                        .atZone(ZoneId.systemDefault())
+                                        .format(DateTimeFormatter.ofPattern("HH:mm")),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -233,37 +273,238 @@ fun HistoricalScreen(
                 }
             }
             
-            // Exercise Sessions Card (if available)
-            if (uiState.exerciseSessions > 0) {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.FitnessCenter,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Column {
+            // Blood Glucose Card
+            if (uiState.bloodGlucoseData.isNotEmpty()) {
+                val avgGlucose = uiState.bloodGlucoseData.map { it.mgDl }.average()
+                
+                ExpandableMetricCard(
+                    title = "Blood Glucose",
+                    icon = Icons.Filled.Bloodtype,
+                    value = "${String.format(Locale.US, "%.0f", avgGlucose)} mg/dL",
+                    subtitle = "${uiState.bloodGlucoseData.size} readings",
+                    isExpanded = uiState.expandedSections.contains(MetricCardIds.BLOOD_GLUCOSE),
+                    onToggle = { viewModel.toggleSection(MetricCardIds.BLOOD_GLUCOSE) }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Readings",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        uiState.bloodGlucoseData.sortedByDescending { it.timestamp }.forEach { reading ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
                                 Text(
-                                    text = "Exercise Sessions",
-                                    style = MaterialTheme.typography.titleMedium
+                                    text = "${String.format(Locale.US, "%.0f", reading.mgDl)} mg/dL",
+                                    style = MaterialTheme.typography.bodyMedium
                                 )
                                 Text(
-                                    text = "${uiState.exerciseSessions}",
-                                    style = MaterialTheme.typography.headlineSmall
+                                    text = reading.timestamp
+                                        .atZone(ZoneId.systemDefault())
+                                        .format(DateTimeFormatter.ofPattern("HH:mm")),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
                     }
+                }
+            }
+            
+            // Body Temperature Card
+            if (uiState.bodyTemperatureData.isNotEmpty()) {
+                val avgTemp = uiState.bodyTemperatureData.map { it.celsius }.average()
+                
+                ExpandableMetricCard(
+                    title = "Body Temperature",
+                    icon = Icons.Filled.Thermostat,
+                    value = "${String.format(Locale.US, "%.1f", avgTemp)}°C",
+                    subtitle = "${uiState.bodyTemperatureData.size} readings",
+                    isExpanded = uiState.expandedSections.contains(MetricCardIds.BODY_TEMPERATURE),
+                    onToggle = { viewModel.toggleSection(MetricCardIds.BODY_TEMPERATURE) }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Readings",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        uiState.bodyTemperatureData.sortedByDescending { it.timestamp }.forEach { reading ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "${String.format(Locale.US, "%.1f", reading.celsius)}°C",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = reading.timestamp
+                                        .atZone(ZoneId.systemDefault())
+                                        .format(DateTimeFormatter.ofPattern("HH:mm")),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Oxygen Saturation Card
+            if (uiState.oxygenSaturationData.isNotEmpty()) {
+                val avgOxygen = uiState.oxygenSaturationData.map { it.percentage }.average()
+                
+                ExpandableMetricCard(
+                    title = "Oxygen Saturation",
+                    icon = Icons.Filled.Air,
+                    value = "${String.format(Locale.US, "%.1f", avgOxygen)}%",
+                    subtitle = "${uiState.oxygenSaturationData.size} readings",
+                    isExpanded = uiState.expandedSections.contains(MetricCardIds.OXYGEN_SATURATION),
+                    onToggle = { viewModel.toggleSection(MetricCardIds.OXYGEN_SATURATION) }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Readings",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        uiState.oxygenSaturationData.sortedByDescending { it.timestamp }.forEach { reading ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "${String.format(Locale.US, "%.1f", reading.percentage)}%",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = reading.timestamp
+                                        .atZone(ZoneId.systemDefault())
+                                        .format(DateTimeFormatter.ofPattern("HH:mm")),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Resting Heart Rate Card
+            if (uiState.restingHeartRateData.isNotEmpty()) {
+                val avgRhr = uiState.restingHeartRateData.map { it.bpm.toDouble() }.average()
+                
+                ExpandableMetricCard(
+                    title = "Resting Heart Rate",
+                    icon = Icons.Filled.Favorite,
+                    value = "${String.format(Locale.US, "%.0f", avgRhr)} bpm",
+                    subtitle = "${uiState.restingHeartRateData.size} readings",
+                    isExpanded = uiState.expandedSections.contains(MetricCardIds.RESTING_HEART_RATE),
+                    onToggle = { viewModel.toggleSection(MetricCardIds.RESTING_HEART_RATE) }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Readings",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        uiState.restingHeartRateData.sortedByDescending { it.timestamp }.forEach { reading ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "${reading.bpm} bpm",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = reading.timestamp
+                                        .atZone(ZoneId.systemDefault())
+                                        .format(DateTimeFormatter.ofPattern("HH:mm")),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Respiratory Rate Card
+            if (uiState.respiratoryRateData.isNotEmpty()) {
+                val avgRespRate = uiState.respiratoryRateData.map { it.breathsPerMinute }.average()
+                
+                ExpandableMetricCard(
+                    title = "Respiratory Rate",
+                    icon = Icons.Filled.Air,
+                    value = "${String.format(Locale.US, "%.1f", avgRespRate)} breaths/min",
+                    subtitle = "${uiState.respiratoryRateData.size} readings",
+                    isExpanded = uiState.expandedSections.contains(MetricCardIds.RESPIRATORY_RATE),
+                    onToggle = { viewModel.toggleSection(MetricCardIds.RESPIRATORY_RATE) }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Readings",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        uiState.respiratoryRateData.sortedByDescending { it.timestamp }.forEach { reading ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "${String.format(Locale.US, "%.1f", reading.breathsPerMinute)} breaths/min",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = reading.timestamp
+                                        .atZone(ZoneId.systemDefault())
+                                        .format(DateTimeFormatter.ofPattern("HH:mm")),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Distance Card
+            if (uiState.distance > 0) {
+                ExpandableMetricCard(
+                    title = "Distance",
+                    icon = Icons.Filled.Place,
+                    value = "${String.format(Locale.US, "%.2f", uiState.distance / 1000)} km",
+                    isExpanded = uiState.expandedSections.contains(MetricCardIds.DISTANCE),
+                    onToggle = { viewModel.toggleSection(MetricCardIds.DISTANCE) }
+                ) {
+                    Text(
+                        text = "Total distance traveled throughout the day",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            // Exercise Sessions Card
+            if (uiState.exerciseSessions > 0) {
+                ExpandableMetricCard(
+                    title = "Exercise Sessions",
+                    icon = Icons.Filled.FitnessCenter,
+                    value = "${uiState.exerciseSessions}",
+                    subtitle = "sessions completed",
+                    isExpanded = uiState.expandedSections.contains(MetricCardIds.EXERCISE),
+                    onToggle = { viewModel.toggleSection(MetricCardIds.EXERCISE) }
+                ) {
+                    Text(
+                        text = "Total exercise sessions recorded for the day",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
