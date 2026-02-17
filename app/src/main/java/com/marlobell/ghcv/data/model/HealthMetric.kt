@@ -40,14 +40,6 @@ data class BloodPressureMetric(
     override val unit: String = "mmHg"
 }
 
-data class WeightMetric(
-    override val timestamp: Instant,
-    val kilograms: Double
-) : HealthMetric() {
-    override val value: Double = kilograms
-    override val unit: String = "kg"
-}
-
 data class ExerciseSessionMetric(
     override val timestamp: Instant,
     val endTime: Instant,

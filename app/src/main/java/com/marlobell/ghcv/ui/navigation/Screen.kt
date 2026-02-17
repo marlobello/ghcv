@@ -12,7 +12,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     
     object Current : Screen("current", "Current", Icons.Filled.Home)
     object Historical : Screen(
-        "historical?date={date}&expandCard={expandCard}&scrollToCard={scrollToCard}", 
+        "historical?date={date}&expandCard={expandCard}", 
         "Historical", 
         Icons.Filled.CalendarMonth
     ) {
@@ -20,13 +20,11 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
         
         fun createRoute(
             date: String? = null,
-            expandCard: String? = null,
-            scrollToCard: String? = null
+            expandCard: String? = null
         ): String {
             val params = mutableListOf<String>()
             date?.let { params.add("date=$it") }
             expandCard?.let { params.add("expandCard=$it") }
-            scrollToCard?.let { params.add("scrollToCard=$it") }
             
             return if (params.isEmpty()) {
                 "historical"

@@ -36,8 +36,7 @@ fun HistoricalScreen(
     healthConnectManager: HealthConnectManager,
     modifier: Modifier = Modifier,
     initialDate: String? = null,
-    initialExpandedCard: String? = null,
-    scrollToCard: String? = null
+    initialExpandedCard: String? = null
 ) {
     val repository = remember {
         HealthConnectRepository(healthConnectManager.getClient())

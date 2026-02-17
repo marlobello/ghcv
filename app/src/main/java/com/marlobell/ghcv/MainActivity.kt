@@ -251,23 +251,16 @@ fun MainNavigationScreen(healthConnectManager: HealthConnectManager) {
                         type = NavType.StringType
                         nullable = true
                         defaultValue = null
-                    },
-                    navArgument("scrollToCard") { 
-                        type = NavType.StringType
-                        nullable = true
-                        defaultValue = null
                     }
                 )
             ) { backStackEntry ->
                 val date = backStackEntry.arguments?.getString("date")
                 val expandCard = backStackEntry.arguments?.getString("expandCard")
-                val scrollToCard = backStackEntry.arguments?.getString("scrollToCard")
                 
                 HistoricalScreen(
                     healthConnectManager = healthConnectManager,
                     initialDate = date,
-                    initialExpandedCard = expandCard,
-                    scrollToCard = scrollToCard
+                    initialExpandedCard = expandCard
                 )
             }
             composable(Screen.Trends.route) {

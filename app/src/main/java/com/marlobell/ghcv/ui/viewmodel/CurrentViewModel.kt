@@ -334,121 +334,61 @@ class CurrentViewModel(
                 }
 
                 // Fetch all vitals with individual error handling
-                val bloodPressureStats = try {
-                    val bpLatest = repository.getLatestBloodPressure()
-                    val bpToday = repository.getTodayBloodPressure()
-                    VitalStats(
-                        latest = bpLatest,
-                        latestTimestamp = bpLatest?.timestamp,
-                        dailyAvg = if (bpToday.isNotEmpty()) bpToday.map { it.systolic }.average() else null,
-                        dailyMin = bpToday.minOfOrNull { it.systolic },
-                        dailyMax = bpToday.maxOfOrNull { it.systolic },
-                        readingCount = bpToday.size
-                    )
-                } catch (e: SecurityException) {
-                    Log.d("CurrentViewModel", "Blood pressure not available (permission/no data)")
-                    VitalStats()
-                } catch (e: Exception) {
-                    Log.w("CurrentViewModel", "Failed to fetch blood pressure", e)
-                    VitalStats()
-                }
+                val bloodPressureStats = buildVitalStats(
+                    latestMetric = repository.getLatestBloodPressure(),
+                    todayReadings = repository.getTodayBloodPressure(),
+                    valueExtractor = { it.systolic },
+                    latestValueExtractor = { it },
+                    latestTimestampExtractor = { it.timestamp },
+                    metricName = "Blood pressure"
+                )
                 
-                val bloodGlucoseStats = try {
-                    val glucoseLatest = repository.getLatestBloodGlucose()
-                    val glucoseToday = repository.getTodayBloodGlucose()
-                    VitalStats(
-                        latest = glucoseLatest?.mgDl,
-                        latestTimestamp = glucoseLatest?.timestamp,
-                        dailyAvg = if (glucoseToday.isNotEmpty()) glucoseToday.map { it.mgDl }.average() else null,
-                        dailyMin = glucoseToday.minOfOrNull { it.mgDl },
-                        dailyMax = glucoseToday.maxOfOrNull { it.mgDl },
-                        readingCount = glucoseToday.size
-                    )
-                } catch (e: SecurityException) {
-                    Log.d("CurrentViewModel", "Blood glucose not available (permission/no data)")
-                    VitalStats()
-                } catch (e: Exception) {
-                    Log.w("CurrentViewModel", "Failed to fetch blood glucose", e)
-                    VitalStats()
-                }
+                val bloodGlucoseStats = buildVitalStats(
+                    latestMetric = repository.getLatestBloodGlucose(),
+                    todayReadings = repository.getTodayBloodGlucose(),
+                    valueExtractor = { it.mgDl },
+                    latestValueExtractor = { it.mgDl },
+                    latestTimestampExtractor = { it.timestamp },
+                    metricName = "Blood glucose"
+                )
                 
-                val bodyTemperatureStats = try {
-                    val tempLatest = repository.getLatestBodyTemperature()
-                    val tempToday = repository.getTodayBodyTemperature()
-                    VitalStats(
-                        latest = tempLatest?.celsius,
-                        latestTimestamp = tempLatest?.timestamp,
-                        dailyAvg = if (tempToday.isNotEmpty()) tempToday.map { it.celsius }.average() else null,
-                        dailyMin = tempToday.minOfOrNull { it.celsius },
-                        dailyMax = tempToday.maxOfOrNull { it.celsius },
-                        readingCount = tempToday.size
-                    )
-                } catch (e: SecurityException) {
-                    Log.d("CurrentViewModel", "Body temperature not available (permission/no data)")
-                    VitalStats()
-                } catch (e: Exception) {
-                    Log.w("CurrentViewModel", "Failed to fetch body temperature", e)
-                    VitalStats()
-                }
+                val bodyTemperatureStats = buildVitalStats(
+                    latestMetric = repository.getLatestBodyTemperature(),
+                    todayReadings = repository.getTodayBodyTemperature(),
+                    valueExtractor = { it.celsius },
+                    latestValueExtractor = { it.celsius },
+                    latestTimestampExtractor = { it.timestamp },
+                    metricName = "Body temperature"
+                )
                 
-                val oxygenSaturationStats = try {
-                    val spo2Latest = repository.getLatestOxygenSaturation()
-                    val spo2Today = repository.getTodayOxygenSaturation()
-                    VitalStats(
-                        latest = spo2Latest?.percentage,
-                        latestTimestamp = spo2Latest?.timestamp,
-                        dailyAvg = if (spo2Today.isNotEmpty()) spo2Today.map { it.percentage }.average() else null,
-                        dailyMin = spo2Today.minOfOrNull { it.percentage },
-                        dailyMax = spo2Today.maxOfOrNull { it.percentage },
-                        readingCount = spo2Today.size
-                    )
-                } catch (e: SecurityException) {
-                    Log.d("CurrentViewModel", "Oxygen saturation not available (permission/no data)")
-                    VitalStats()
-                } catch (e: Exception) {
-                    Log.w("CurrentViewModel", "Failed to fetch oxygen saturation", e)
-                    VitalStats()
-                }
+                val oxygenSaturationStats = buildVitalStats(
+                    latestMetric = repository.getLatestOxygenSaturation(),
+                    todayReadings = repository.getTodayOxygenSaturation(),
+                    valueExtractor = { it.percentage },
+                    latestValueExtractor = { it.percentage },
+                    latestTimestampExtractor = { it.timestamp },
+                    metricName = "Oxygen saturation"
+                )
                 
                 // Note: These vitals may trigger rate limiting if queried too frequently
                 // Using try-catch with proper exception handling
-                val restingHeartRateStats = try {
-                    val restingHRLatest = repository.getLatestRestingHeartRate()
-                    val restingHRToday = repository.getTodayRestingHeartRate()
-                    VitalStats(
-                        latest = restingHRLatest?.bpm,
-                        latestTimestamp = restingHRLatest?.timestamp,
-                        dailyAvg = if (restingHRToday.isNotEmpty()) restingHRToday.map { it.bpm.toDouble() }.average() else null,
-                        dailyMin = restingHRToday.minOfOrNull { it.bpm.toDouble() },
-                        dailyMax = restingHRToday.maxOfOrNull { it.bpm.toDouble() },
-                        readingCount = restingHRToday.size
-                    )
-                } catch (e: SecurityException) {
-                    Log.d("CurrentViewModel", "Resting HR unavailable (likely no data)")
-                    VitalStats()
-                } catch (e: Exception) {
-                    Log.d("CurrentViewModel", "Resting HR query failed (possibly rate limited): ${e.message}")
-                    VitalStats()
-                }
+                val restingHeartRateStats = buildVitalStats(
+                    latestMetric = repository.getLatestRestingHeartRate(),
+                    todayReadings = repository.getTodayRestingHeartRate(),
+                    valueExtractor = { it.bpm.toDouble() },
+                    latestValueExtractor = { it.bpm },
+                    latestTimestampExtractor = { it.timestamp },
+                    metricName = "Resting heart rate"
+                )
                 
-                val respiratoryRateStats = try {
-                    val respRateLatest = repository.getLatestRespiratoryRate()
-                    val respRateToday = repository.getTodayRespiratoryRate()
-                    VitalStats(
-                        latest = respRateLatest?.breathsPerMinute,
-                        latestTimestamp = respRateLatest?.timestamp,
-                        dailyAvg = if (respRateToday.isNotEmpty()) respRateToday.map { it.breathsPerMinute }.average() else null,
-                        dailyMin = respRateToday.minOfOrNull { it.breathsPerMinute },
-                        dailyMax = respRateToday.maxOfOrNull { it.breathsPerMinute },
-                        readingCount = respRateToday.size
-                    )
-                } catch (e: SecurityException) {
-                    Log.d("CurrentViewModel", "Respiratory rate unavailable (likely no data)")
-                    VitalStats()
-                } catch (e: Exception) {
-                    Log.d("CurrentViewModel", "Respiratory rate query failed (possibly rate limited): ${e.message}")
-                    VitalStats()
-                }
+                val respiratoryRateStats = buildVitalStats(
+                    latestMetric = repository.getLatestRespiratoryRate(),
+                    todayReadings = repository.getTodayRespiratoryRate(),
+                    valueExtractor = { it.breathsPerMinute },
+                    latestValueExtractor = { it.breathsPerMinute },
+                    latestTimestampExtractor = { it.timestamp },
+                    metricName = "Respiratory rate"
+                )
 
                 // Fetch 7-day averages for vitals comparisons
                 val sevenDayAvgBP = try {
@@ -659,6 +599,45 @@ class CurrentViewModel(
                 
                 _uiState.value = UiState.Done
             }
+        }
+    }
+
+    /**
+     * Helper function to construct VitalStats with consistent error handling.
+     * Extracts the duplicate pattern used for fetching and processing vital statistics.
+     *
+     * @param latestMetric The latest metric reading object
+     * @param todayReadings List of today's metric readings
+     * @param valueExtractor Function to extract numeric values from individual readings for statistics
+     * @param latestValueExtractor Function to extract the final value from the latest metric
+     * @param metricName Name of the metric for logging purposes
+     * @return VitalStats object with calculated daily statistics or empty stats on error
+     */
+    private fun <T, U, V> buildVitalStats(
+        latestMetric: T?,
+        todayReadings: List<U>,
+        valueExtractor: (U) -> Double?,
+        latestValueExtractor: (T) -> V?,
+        latestTimestampExtractor: (T) -> Instant?,
+        metricName: String
+    ): VitalStats<V> {
+        return try {
+            val values = todayReadings.mapNotNull { valueExtractor(it) }
+            
+            VitalStats(
+                latest = latestMetric?.let { latestValueExtractor(it) },
+                latestTimestamp = latestMetric?.let { latestTimestampExtractor(it) },
+                dailyAvg = if (values.isNotEmpty()) values.average() else null,
+                dailyMin = if (values.isNotEmpty()) values.minOrNull() else null,
+                dailyMax = if (values.isNotEmpty()) values.maxOrNull() else null,
+                readingCount = todayReadings.size
+            )
+        } catch (e: SecurityException) {
+            Log.d("CurrentViewModel", "$metricName not available (permission/no data)")
+            VitalStats()
+        } catch (e: Exception) {
+            Log.w("CurrentViewModel", "Failed to fetch $metricName", e)
+            VitalStats()
         }
     }
 

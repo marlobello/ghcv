@@ -17,7 +17,7 @@ import com.marlobell.ghcv.data.model.RespiratoryRateMetric
 import com.marlobell.ghcv.data.model.RestingHeartRateMetric
 import com.marlobell.ghcv.data.model.SleepMetric
 import com.marlobell.ghcv.data.model.SleepStage
-import com.marlobell.ghcv.data.model.WeightMetric
+
 import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
@@ -38,6 +38,24 @@ class HealthConnectRepository(
     }
 
     /**
+     * Helper function to create TimeRangeFilter for today (start of day to now).
+     */
+    private fun getTimeRangeForToday(): TimeRangeFilter {
+        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val now = Instant.now()
+        return TimeRangeFilter.between(startOfDay, now)
+    }
+
+    /**
+     * Helper function to create TimeRangeFilter for a specific date (full 24 hours).
+     */
+    private fun getTimeRangeForDate(date: LocalDate): TimeRangeFilter {
+        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
+        return TimeRangeFilter.between(startOfDay, endOfDay)
+    }
+
+    /**
      * Gets today's total steps using AggregateRequest for efficient server-side calculation.
      * Uses data origin filtering to prioritize wearable devices.
      *
@@ -46,15 +64,14 @@ class HealthConnectRepository(
      * @throws HealthConnectException.NetworkException if communication with Health Connect fails
      */
     suspend fun getTodaySteps(): Long {
-        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = Instant.now()
+        val timeRange = getTimeRangeForToday()
 
         return try {
             // Read all step records to see what we have
             val stepsRecords = healthConnectClient.readRecords(
                 ReadRecordsRequest(
                     recordType = StepsRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                    timeRangeFilter = timeRange
                 )
             )
             
@@ -102,55 +119,15 @@ class HealthConnectRepository(
         }
     }
 
-    /**
-     * Helper function to get steps with data origin filter.
-     */
-    private suspend fun getStepsWithDataOriginFilter(
-        start: Instant,
-        end: Instant,
-        packageName: String
-    ): Long {
-        return try {
-            val dataOriginFilter = setOf(
-                androidx.health.connect.client.records.metadata.DataOrigin(packageName)
-            )
-            
-            val aggregateRequest = AggregateRequest(
-                metrics = setOf(StepsRecord.COUNT_TOTAL),
-                timeRangeFilter = TimeRangeFilter.between(start, end),
-                dataOriginFilter = dataOriginFilter
-            )
-            
-            val response = healthConnectClient.aggregate(aggregateRequest)
-            response[StepsRecord.COUNT_TOTAL] ?: 0L
-        } catch (e: Exception) {
-            0L
-        }
-    }
-
-    /**
-     * Helper function to get steps without data origin filter.
-     */
-    private suspend fun getStepsWithoutFilter(start: Instant, end: Instant): Long {
-        val aggregateRequest = AggregateRequest(
-            metrics = setOf(StepsRecord.COUNT_TOTAL),
-            timeRangeFilter = TimeRangeFilter.between(start, end)
-        )
-        
-        val response = healthConnectClient.aggregate(aggregateRequest)
-        return response[StepsRecord.COUNT_TOTAL] ?: 0L
-    }
-
     suspend fun getStepsForDate(date: LocalDate): Long {
-        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
+        val timeRange = getTimeRangeForDate(date)
 
         return try {
             // Read all step records to see what we have
             val stepsRecords = healthConnectClient.readRecords(
                 ReadRecordsRequest(
                     recordType = StepsRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                    timeRangeFilter = timeRange
                 )
             )
             
@@ -219,13 +196,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getHeartRateForDate(date: LocalDate): List<HeartRateMetric> {
-        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
+        val timeRange = getTimeRangeForDate(date)
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = HeartRateRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -240,13 +216,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getAverageHeartRateForDate(date: LocalDate): Double? {
-        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
+        val timeRange = getTimeRangeForDate(date)
         
         return try {
             val aggregateRequest = AggregateRequest(
                 metrics = setOf(HeartRateRecord.BPM_AVG),
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
             
             val response = healthConnectClient.aggregate(aggregateRequest)
@@ -257,13 +232,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getSleepForDate(date: LocalDate): SleepMetric? {
-        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
+        val timeRange = getTimeRangeForDate(date)
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = SleepSessionRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -312,14 +286,13 @@ class HealthConnectRepository(
     }
 
     suspend fun getTodayActiveCalories(): Double {
-        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = Instant.now()
+        val timeRange = getTimeRangeForToday()
 
         return try {
             val response = healthConnectClient.aggregate(
                 AggregateRequest(
                     metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
-                    timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                    timeRangeFilter = timeRange
                 )
             )
             response[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
@@ -341,14 +314,13 @@ class HealthConnectRepository(
     }
 
     suspend fun getActiveCaloriesForDate(date: LocalDate): Double {
-        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
+        val timeRange = getTimeRangeForDate(date)
 
         return try {
             val response = healthConnectClient.aggregate(
                 AggregateRequest(
                     metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
-                    timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                    timeRangeFilter = timeRange
                 )
             )
             response[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
@@ -370,13 +342,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getBloodPressureForDate(date: LocalDate): List<BloodPressureMetric> {
-        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
+        val timeRange = getTimeRangeForDate(date)
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = BloodPressureRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -390,13 +361,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getDistanceForDate(date: LocalDate): Double {
-        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
+        val timeRange = getTimeRangeForDate(date)
 
         return try {
             val aggregateRequest = AggregateRequest(
                 metrics = setOf(DistanceRecord.DISTANCE_TOTAL),
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
             val result = healthConnectClient.aggregate(aggregateRequest)
             result[DistanceRecord.DISTANCE_TOTAL]?.inMeters ?: 0.0
@@ -407,13 +377,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getExerciseSessionsForDate(date: LocalDate): List<ExerciseSessionMetric> {
-        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
+        val timeRange = getTimeRangeForDate(date)
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = ExerciseSessionRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -463,13 +432,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getTodayBloodPressure(): List<BloodPressureMetric> {
-        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = Instant.now()
+        val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = BloodPressureRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -503,13 +471,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getTodayBloodGlucose(): List<BloodGlucoseMetric> {
-        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = Instant.now()
+        val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = BloodGlucoseRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -542,13 +509,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getTodayBodyTemperature(): List<BodyTemperatureMetric> {
-        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = Instant.now()
+        val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = BodyTemperatureRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -581,13 +547,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getTodayOxygenSaturation(): List<OxygenSaturationMetric> {
-        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = Instant.now()
+        val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = OxygenSaturationRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -791,13 +756,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getTodayRestingHeartRate(): List<RestingHeartRateMetric> {
-        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = Instant.now()
+        val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = RestingHeartRateRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -830,13 +794,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getTodayRespiratoryRate(): List<RespiratoryRateMetric> {
-        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = Instant.now()
+        val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = RespiratoryRateRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -849,13 +812,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getBloodGlucoseForDate(date: LocalDate): List<BloodGlucoseMetric> {
-        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val timeRange = getTimeRangeForDate(date)
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = BloodGlucoseRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -868,13 +830,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getBodyTemperatureForDate(date: LocalDate): List<BodyTemperatureMetric> {
-        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val timeRange = getTimeRangeForDate(date)
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = BodyTemperatureRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -887,13 +848,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getOxygenSaturationForDate(date: LocalDate): List<OxygenSaturationMetric> {
-        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val timeRange = getTimeRangeForDate(date)
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = OxygenSaturationRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -906,13 +866,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getRestingHeartRateForDate(date: LocalDate): List<RestingHeartRateMetric> {
-        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val timeRange = getTimeRangeForDate(date)
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = RestingHeartRateRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -925,13 +884,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getRespiratoryRateForDate(date: LocalDate): List<RespiratoryRateMetric> {
-        val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val timeRange = getTimeRangeForDate(date)
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = RespiratoryRateRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -944,13 +902,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getTodayDistance(): Double {
-        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = Instant.now()
+        val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.aggregate(
             AggregateRequest(
                 metrics = setOf(DistanceRecord.DISTANCE_TOTAL),
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 
@@ -958,13 +915,12 @@ class HealthConnectRepository(
     }
 
     suspend fun getTodayExerciseSessions(): List<ExerciseSessionMetric> {
-        val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = Instant.now()
+        val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = ExerciseSessionRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                timeRangeFilter = timeRange
             )
         )
 

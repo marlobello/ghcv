@@ -129,8 +129,7 @@ fun CurrentScreen(
                             navController.navigate(
                                 Screen.Historical.createRoute(
                                     date = LocalDate.now().toString(),
-                                    expandCard = MetricCardIds.STEPS,
-                                    scrollToCard = MetricCardIds.STEPS
+                                    expandCard = MetricCardIds.STEPS
                                 )
                             )
                         }
@@ -153,8 +152,7 @@ fun CurrentScreen(
                             navController.navigate(
                                 Screen.Historical.createRoute(
                                     date = LocalDate.now().toString(),
-                                    expandCard = MetricCardIds.HEART_RATE,
-                                    scrollToCard = MetricCardIds.HEART_RATE
+                                    expandCard = MetricCardIds.HEART_RATE
                                 )
                             )
                         }
@@ -175,8 +173,7 @@ fun CurrentScreen(
                             navController.navigate(
                                 Screen.Historical.createRoute(
                                     date = LocalDate.now().toString(),
-                                    expandCard = MetricCardIds.SLEEP,
-                                    scrollToCard = MetricCardIds.SLEEP
+                                    expandCard = MetricCardIds.SLEEP
                                 )
                             )
                         }
@@ -194,8 +191,7 @@ fun CurrentScreen(
                             navController.navigate(
                                 Screen.Historical.createRoute(
                                     date = LocalDate.now().toString(),
-                                    expandCard = MetricCardIds.ACTIVE_CALORIES,
-                                    scrollToCard = MetricCardIds.ACTIVE_CALORIES
+                                    expandCard = MetricCardIds.ACTIVE_CALORIES
                                 )
                             )
                         }
@@ -221,8 +217,7 @@ fun CurrentScreen(
                                 navController.navigate(
                                     Screen.Historical.createRoute(
                                         date = LocalDate.now().toString(),
-                                        expandCard = MetricCardIds.BLOOD_PRESSURE,
-                                        scrollToCard = MetricCardIds.BLOOD_PRESSURE
+                                        expandCard = MetricCardIds.BLOOD_PRESSURE
                                     )
                                 )
                             }
@@ -248,8 +243,7 @@ fun CurrentScreen(
                                 navController.navigate(
                                     Screen.Historical.createRoute(
                                         date = LocalDate.now().toString(),
-                                        expandCard = MetricCardIds.BLOOD_GLUCOSE,
-                                        scrollToCard = MetricCardIds.BLOOD_GLUCOSE
+                                        expandCard = MetricCardIds.BLOOD_GLUCOSE
                                     )
                                 )
                             }
@@ -275,8 +269,7 @@ fun CurrentScreen(
                                 navController.navigate(
                                     Screen.Historical.createRoute(
                                         date = LocalDate.now().toString(),
-                                        expandCard = MetricCardIds.BODY_TEMPERATURE,
-                                        scrollToCard = MetricCardIds.BODY_TEMPERATURE
+                                        expandCard = MetricCardIds.BODY_TEMPERATURE
                                     )
                                 )
                             }
@@ -302,8 +295,7 @@ fun CurrentScreen(
                                 navController.navigate(
                                     Screen.Historical.createRoute(
                                         date = LocalDate.now().toString(),
-                                        expandCard = MetricCardIds.OXYGEN_SATURATION,
-                                        scrollToCard = MetricCardIds.OXYGEN_SATURATION
+                                        expandCard = MetricCardIds.OXYGEN_SATURATION
                                     )
                                 )
                             }
@@ -329,8 +321,7 @@ fun CurrentScreen(
                                 navController.navigate(
                                     Screen.Historical.createRoute(
                                         date = LocalDate.now().toString(),
-                                        expandCard = MetricCardIds.RESTING_HEART_RATE,
-                                        scrollToCard = MetricCardIds.RESTING_HEART_RATE
+                                        expandCard = MetricCardIds.RESTING_HEART_RATE
                                     )
                                 )
                             }
@@ -356,8 +347,7 @@ fun CurrentScreen(
                                 navController.navigate(
                                     Screen.Historical.createRoute(
                                         date = LocalDate.now().toString(),
-                                        expandCard = MetricCardIds.RESPIRATORY_RATE,
-                                        scrollToCard = MetricCardIds.RESPIRATORY_RATE
+                                        expandCard = MetricCardIds.RESPIRATORY_RATE
                                     )
                                 )
                             }
@@ -376,8 +366,7 @@ fun CurrentScreen(
                             navController.navigate(
                                 Screen.Historical.createRoute(
                                     date = LocalDate.now().toString(),
-                                    expandCard = MetricCardIds.DISTANCE,
-                                    scrollToCard = MetricCardIds.DISTANCE
+                                    expandCard = MetricCardIds.DISTANCE
                                 )
                             )
                         }
@@ -395,8 +384,7 @@ fun CurrentScreen(
                             navController.navigate(
                                 Screen.Historical.createRoute(
                                     date = LocalDate.now().toString(),
-                                    expandCard = MetricCardIds.EXERCISE,
-                                    scrollToCard = MetricCardIds.EXERCISE
+                                    expandCard = MetricCardIds.EXERCISE
                                 )
                             )
                         }
