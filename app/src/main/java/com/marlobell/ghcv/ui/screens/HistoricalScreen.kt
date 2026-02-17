@@ -515,8 +515,9 @@ fun HistoricalScreen(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
+                        // Convert UTC epoch millis to LocalDate using epoch day to avoid timezone issues
                         val selectedDate = java.time.Instant.ofEpochMilli(millis)
-                            .atZone(java.time.ZoneId.systemDefault())
+                            .atZone(java.time.ZoneId.of("UTC"))
                             .toLocalDate()
                         viewModel.loadDataForDate(selectedDate)
                     }
