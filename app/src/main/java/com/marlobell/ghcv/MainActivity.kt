@@ -49,6 +49,7 @@ import com.marlobell.ghcv.data.HealthConnectManager
 import com.marlobell.ghcv.ui.navigation.Screen
 import com.marlobell.ghcv.ui.navigation.bottomNavItems
 import com.marlobell.ghcv.ui.screens.CurrentScreen
+import com.marlobell.ghcv.ui.screens.DataScreen
 import com.marlobell.ghcv.ui.screens.HistoricalScreen
 import com.marlobell.ghcv.ui.screens.TrendsScreen
 import com.marlobell.ghcv.ui.theme.GhcvTheme
@@ -175,10 +176,10 @@ fun MainNavigationScreen(healthConnectManager: HealthConnectManager) {
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Dump HC Data") },
+                            text = { Text("Show HC Data") },
                             onClick = {
                                 showMenu = false
-                                healthConnectManager.dumpTodayData()
+                                navController.navigate(Screen.Data.route)
                             }
                         )
                     }
@@ -222,6 +223,9 @@ fun MainNavigationScreen(healthConnectManager: HealthConnectManager) {
             }
             composable(Screen.Trends.route) {
                 TrendsScreen(healthConnectManager)
+            }
+            composable(Screen.Data.route) {
+                DataScreen(healthConnectManager)
             }
         }
     }

@@ -50,18 +50,38 @@ class HealthConnectRepository(
         val endOfDay = Instant.now()
 
         return try {
+            // Read all step records to see what we have
+            val stepsRecords = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = StepsRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                )
+            )
+            
+            // Log all sources and their step counts
+            val stepsBySource = mutableMapOf<String, Long>()
+            stepsRecords.records.forEach { record ->
+                val source = record.metadata.dataOrigin.packageName
+                stepsBySource[source] = (stepsBySource[source] ?: 0) + record.count
+            }
+            
+            stepsBySource.forEach { (source, steps) ->
+                android.util.Log.d("HealthConnect", "Found steps from $source: $steps")
+            }
+            
             // Try preferred sources first
             for (source in PREFERRED_SOURCES) {
-                val steps = getStepsWithDataOriginFilter(startOfDay, endOfDay, source)
-                if (steps > 0) {
-                    android.util.Log.d("HealthConnect", "Using steps from $source: $steps")
+                val steps = stepsBySource[source]
+                if (steps != null && steps > 0) {
+                    android.util.Log.d("HealthConnect", "Using steps from preferred source $source: $steps")
                     return steps
                 }
             }
             
-            // Fallback: aggregate without filter (use any available source)
-            android.util.Log.d("HealthConnect", "No preferred source found, using any available source")
-            getStepsWithoutFilter(startOfDay, endOfDay)
+            // Fallback: use total from all sources
+            val totalSteps = stepsBySource.values.sum()
+            android.util.Log.d("HealthConnect", "No preferred source found, using total from all sources: $totalSteps")
+            totalSteps
         } catch (e: SecurityException) {
             android.util.Log.e("HealthConnect", "Permission denied accessing steps", e)
             throw HealthConnectException.PermissionDeniedException(
@@ -126,16 +146,31 @@ class HealthConnectRepository(
         val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
 
         return try {
+            // Read all step records to see what we have
+            val stepsRecords = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = StepsRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(startOfDay, endOfDay)
+                )
+            )
+            
+            // Sum steps by source
+            val stepsBySource = mutableMapOf<String, Long>()
+            stepsRecords.records.forEach { record ->
+                val source = record.metadata.dataOrigin.packageName
+                stepsBySource[source] = (stepsBySource[source] ?: 0) + record.count
+            }
+            
             // Try preferred sources first
             for (source in PREFERRED_SOURCES) {
-                val steps = getStepsWithDataOriginFilter(startOfDay, endOfDay, source)
-                if (steps > 0) {
+                val steps = stepsBySource[source]
+                if (steps != null && steps > 0) {
                     return steps
                 }
             }
             
-            // Fallback: aggregate without filter
-            getStepsWithoutFilter(startOfDay, endOfDay)
+            // Fallback: use total from all sources
+            stepsBySource.values.sum()
         } catch (e: SecurityException) {
             throw HealthConnectException.PermissionDeniedException(
                 message = "Permission denied to read step data"

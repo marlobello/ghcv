@@ -10,6 +10,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Current : Screen("current", "Current", Icons.Filled.Home)
     object Historical : Screen("historical", "Historical", Icons.Filled.CalendarMonth)
     object Trends : Screen("trends", "Trends", Icons.AutoMirrored.Filled.ShowChart)
+    object Data : Screen("data", "Data", Icons.Filled.Home)
 }
 
 val bottomNavItems = listOf(

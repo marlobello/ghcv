@@ -80,13 +80,25 @@ fun CurrentScreen(
                 style = MaterialTheme.typography.headlineMedium
             )
             
-            healthData.lastUpdated?.let { timestamp ->
-                val minutesAgo = Duration.between(timestamp, Instant.now()).toMinutes()
-                Text(
-                    text = if (minutesAgo < 1) "Just now" else "$minutesAgo min ago",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                healthData.lastUpdated?.let { timestamp ->
+                    val minutesAgo = Duration.between(timestamp, Instant.now()).toMinutes()
+                    Text(
+                        text = if (minutesAgo < 1) "Just now" else "$minutesAgo min ago",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                IconButton(onClick = { viewModel.refresh() }) {
+                    Icon(
+                        imageVector = Icons.Filled.Refresh,
+                        contentDescription = "Refresh data"
+                    )
+                }
             }
         }
         

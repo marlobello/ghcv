@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.marlobell.ghcv.data.HealthConnectManager
 import com.marlobell.ghcv.data.repository.HealthConnectRepository
+import com.marlobell.ghcv.ui.components.SleepStageChart
 import com.marlobell.ghcv.ui.viewmodel.HistoricalViewModel
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottomAxis
@@ -177,36 +178,16 @@ fun HistoricalScreen(
                 ) {
                     Column {
                         Text(
-                            text = "Sleep Stages",
+                            text = "Sleep Timeline",
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                         
                         if (sleep.stages.isNotEmpty()) {
-                            sleep.stages.forEach { stage ->
-                                val stageDuration = java.time.Duration.between(
-                                    stage.startTime,
-                                    stage.endTime
-                                ).toMinutes()
-                                
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = stage.stage.replace("_", " ").lowercase()
-                                            .replaceFirstChar { it.uppercase() },
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                    Text(
-                                        text = "${stageDuration}min",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
+                            SleepStageChart(
+                                stages = sleep.stages,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         } else {
                             Text(
                                 text = "No stage data available",

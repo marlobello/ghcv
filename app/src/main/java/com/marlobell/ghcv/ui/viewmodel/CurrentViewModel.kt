@@ -170,7 +170,7 @@ class CurrentViewModel(
         autoRefreshJob?.cancel()
         autoRefreshJob = viewModelScope.launch {
             while (isInForeground || _hasBackgroundPermission.value) {
-                delay(60_000) // 60 seconds
+                delay(300_000) // 5 minutes
                 if (isInForeground || _hasBackgroundPermission.value) {
                     // Use differential sync for auto-refresh after initial load
                     if (::changesTokenStorage.isInitialized && !isInitialLoad) {
@@ -676,6 +676,11 @@ class CurrentViewModel(
                             changesTokenStorage.clearToken("current_data")
                             isInitialLoad = true
                             loadCurrentData()
+                        }
+                        is SecurityException -> {
+                            // App is in background without background permission
+                            // This is expected behavior - silently skip sync until foreground
+                            Log.d("CurrentViewModel", "App in background, skipping changes sync")
                         }
                         else -> {
                             Log.e("CurrentViewModel", "Error getting changes", e)
