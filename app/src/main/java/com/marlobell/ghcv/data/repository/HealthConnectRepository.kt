@@ -48,10 +48,15 @@ class HealthConnectRepository(
 
     /**
      * Helper function to create TimeRangeFilter for a specific date (full 24 hours).
+     * For today's date, uses current time as end time instead of midnight tomorrow.
      */
     private fun getTimeRangeForDate(date: LocalDate): TimeRangeFilter {
         val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val endOfDay = startOfDay.plus(1, ChronoUnit.DAYS)
+        val endOfDay = if (date == LocalDate.now()) {
+            Instant.now()
+        } else {
+            startOfDay.plus(1, ChronoUnit.DAYS)
+        }
         return TimeRangeFilter.between(startOfDay, endOfDay)
     }
 
@@ -602,14 +607,14 @@ class HealthConnectRepository(
      * @return Average blood glucose in mg/dL, or null if no data
      */
     suspend fun getSevenDayAverageBloodGlucose(): Double? {
-        val endOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val startOfPeriod = endOfDay.minus(7, ChronoUnit.DAYS)
+        val endTime = Instant.now()
+        val startTime = endTime.minus(7, ChronoUnit.DAYS)
 
         return try {
             val response = healthConnectClient.readRecords(
                 ReadRecordsRequest(
                     recordType = BloodGlucoseRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(startOfPeriod, endOfDay)
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                 )
             )
 
@@ -631,14 +636,14 @@ class HealthConnectRepository(
      * @return Average body temperature in Celsius, or null if no data
      */
     suspend fun getSevenDayAverageBodyTemperature(): Double? {
-        val endOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val startOfPeriod = endOfDay.minus(7, ChronoUnit.DAYS)
+        val endTime = Instant.now()
+        val startTime = endTime.minus(7, ChronoUnit.DAYS)
 
         return try {
             val response = healthConnectClient.readRecords(
                 ReadRecordsRequest(
                     recordType = BodyTemperatureRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(startOfPeriod, endOfDay)
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                 )
             )
 
@@ -660,14 +665,14 @@ class HealthConnectRepository(
      * @return Average oxygen saturation percentage, or null if no data
      */
     suspend fun getSevenDayAverageOxygenSaturation(): Double? {
-        val endOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val startOfPeriod = endOfDay.minus(7, ChronoUnit.DAYS)
+        val endTime = Instant.now()
+        val startTime = endTime.minus(7, ChronoUnit.DAYS)
 
         return try {
             val response = healthConnectClient.readRecords(
                 ReadRecordsRequest(
                     recordType = OxygenSaturationRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(startOfPeriod, endOfDay)
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                 )
             )
 
@@ -689,13 +694,13 @@ class HealthConnectRepository(
      * @return Average resting heart rate in bpm, or null if no data
      */
     suspend fun getSevenDayAverageRestingHeartRate(): Long? {
-        val endOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val startOfPeriod = endOfDay.minus(7, ChronoUnit.DAYS)
+        val endTime = Instant.now()
+        val startTime = endTime.minus(7, ChronoUnit.DAYS)
 
         return try {
             val aggregateRequest = AggregateRequest(
                 metrics = setOf(RestingHeartRateRecord.BPM_AVG),
-                timeRangeFilter = TimeRangeFilter.between(startOfPeriod, endOfDay)
+                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
             )
             
             val response = healthConnectClient.aggregate(aggregateRequest)
@@ -712,14 +717,14 @@ class HealthConnectRepository(
      * @return Average respiratory rate in breaths per minute, or null if no data
      */
     suspend fun getSevenDayAverageRespiratoryRate(): Double? {
-        val endOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-        val startOfPeriod = endOfDay.minus(7, ChronoUnit.DAYS)
+        val endTime = Instant.now()
+        val startTime = endTime.minus(7, ChronoUnit.DAYS)
 
         return try {
             val response = healthConnectClient.readRecords(
                 ReadRecordsRequest(
                     recordType = RespiratoryRateRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(startOfPeriod, endOfDay)
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                 )
             )
 
