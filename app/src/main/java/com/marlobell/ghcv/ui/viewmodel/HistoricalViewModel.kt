@@ -74,7 +74,7 @@ class HistoricalViewModel(
                 val minHr = heartRateList.minOfOrNull { it.bpm }
                 val maxHr = heartRateList.maxOfOrNull { it.bpm }
                 // Sleep is associated with the previous night
-                val sleep = repository.getSleepForDate(date.minusDays(1))
+                val (sleep, _) = repository.getSleepForDate(date.minusDays(1))
                 val distance = repository.getDistanceForDate(date)
                 val activeCalories = repository.getActiveCaloriesForDate(date)
                 val exercises = repository.getExerciseSessionsForDate(date)

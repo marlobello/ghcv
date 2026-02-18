@@ -64,14 +64,14 @@ class HealthConnectRepository(
     }
 
     /**
-     * Gets today's total steps using AggregateRequest for efficient server-side calculation.
+     * Gets today's total steps and data source using AggregateRequest for efficient server-side calculation.
      * Uses data origin filtering to prioritize wearable devices.
      *
-     * @return Total steps for today
+     * @return Pair of (total steps, source package name) for today
      * @throws HealthConnectException.PermissionDeniedException if permissions are not granted
      * @throws HealthConnectException.NetworkException if communication with Health Connect fails
      */
-    suspend fun getTodaySteps(): Long {
+    suspend fun getTodaySteps(): Pair<Long, String?> {
         val timeRange = getTimeRangeForToday()
 
         return try {
@@ -99,14 +99,15 @@ class HealthConnectRepository(
                 val steps = stepsBySource[source]
                 if (steps != null && steps > 0) {
                     android.util.Log.d("HealthConnect", "Using steps from preferred source $source: $steps")
-                    return steps
+                    return Pair(steps, source)
                 }
             }
             
-            // Fallback: use total from all sources
+            // Fallback: use total from all sources, return first source or null
             val totalSteps = stepsBySource.values.sum()
-            android.util.Log.d("HealthConnect", "No preferred source found, using total from all sources: $totalSteps")
-            totalSteps
+            val firstSource = stepsBySource.keys.firstOrNull()
+            android.util.Log.d("HealthConnect", "No preferred source found, using total from all sources: $totalSteps (source: $firstSource)")
+            Pair(totalSteps, firstSource)
         } catch (e: SecurityException) {
             android.util.Log.e("HealthConnect", "Permission denied accessing steps", e)
             throw HealthConnectException.PermissionDeniedException(
@@ -173,7 +174,7 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getLatestHeartRate(): HeartRateMetric? {
+    suspend fun getLatestHeartRate(): Pair<HeartRateMetric?, String?> {
         val endTime = Instant.now()
         // Extended time range: look back 7 days to ensure we find data
         val startTime = LocalDate.now().minusDays(7).atStartOfDay(ZoneId.systemDefault()).toInstant()
@@ -187,19 +188,21 @@ class HealthConnectRepository(
             )
 
             if (response.records.isEmpty()) {
-                return null
+                return Pair(null, null)
             }
             
             val latest = response.records.maxByOrNull { it.startTime }
-            latest?.samples?.lastOrNull()?.let { sample ->
+            val metric = latest?.samples?.lastOrNull()?.let { sample ->
                 HeartRateMetric(
                     timestamp = sample.time,
                     bpm = sample.beatsPerMinute
                 )
             }
+            val source = latest?.metadata?.dataOrigin?.packageName
+            Pair(metric, source)
         } catch (e: Exception) {
             Log.e("HealthConnectRepository", "Error fetching latest heart rate", e)
-            null
+            Pair(null, null)
         }
     }
 
@@ -248,7 +251,7 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getSleepForDate(date: LocalDate): SleepMetric? {
+    suspend fun getSleepForDate(date: LocalDate): Pair<SleepMetric?, String?> {
         val timeRange = getTimeRangeForDate(date)
 
         val response = healthConnectClient.readRecords(
@@ -258,7 +261,8 @@ class HealthConnectRepository(
             )
         )
 
-        val sleepSession = response.records.firstOrNull() ?: return null
+        val sleepSession = response.records.firstOrNull() ?: return Pair(null, null)
+        val source = sleepSession.metadata.dataOrigin.packageName
         
         val durationMinutes = ChronoUnit.MINUTES.between(
             sleepSession.startTime,
@@ -273,11 +277,12 @@ class HealthConnectRepository(
             )
         }
 
-        return SleepMetric(
+        val metric = SleepMetric(
             timestamp = sleepSession.startTime,
             durationMinutes = durationMinutes,
             stages = stages
         )
+        return Pair(metric, source)
     }
 
     suspend fun getAverageSleepDuration(startTime: Instant, endTime: Instant): Long {
@@ -302,17 +307,27 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getTodayActiveCalories(): Double {
+    suspend fun getTodayActiveCalories(): Pair<Double, String?> {
         val timeRange = getTimeRangeForToday()
 
         return try {
-            val response = healthConnectClient.aggregate(
-                AggregateRequest(
-                    metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
+            // Read records to get source information
+            val records = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = ActiveCaloriesBurnedRecord::class,
                     timeRangeFilter = timeRange
                 )
             )
-            response[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
+            
+            if (records.records.isEmpty()) {
+                return Pair(0.0, null)
+            }
+            
+            // Sum calories and get first source
+            val totalCalories = records.records.sumOf { it.energy.inKilocalories }
+            val source = records.records.firstOrNull()?.metadata?.dataOrigin?.packageName
+            
+            Pair(totalCalories, source)
         } catch (e: SecurityException) {
             throw HealthConnectException.PermissionDeniedException(
                 message = "Permission denied to read active calories data"
@@ -448,7 +463,7 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getTodayBloodPressure(): List<BloodPressureMetric> {
+    suspend fun getTodayBloodPressure(): Pair<List<BloodPressureMetric>, String?> {
         val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
@@ -458,13 +473,16 @@ class HealthConnectRepository(
             )
         )
 
-        return response.records.map {
+        val metrics = response.records.map {
             BloodPressureMetric(
                 timestamp = it.time,
                 systolic = it.systolic.inMillimetersOfMercury,
                 diastolic = it.diastolic.inMillimetersOfMercury
             )
         }
+        
+        val source = response.records.firstOrNull()?.metadata?.dataOrigin?.packageName
+        return Pair(metrics, source)
     }
 
     suspend fun getLatestBloodGlucose(): BloodGlucoseMetric? {
@@ -487,7 +505,7 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getTodayBloodGlucose(): List<BloodGlucoseMetric> {
+    suspend fun getTodayBloodGlucose(): Pair<List<BloodGlucoseMetric>, String?> {
         val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
@@ -497,12 +515,15 @@ class HealthConnectRepository(
             )
         )
 
-        return response.records.map {
+        val metrics = response.records.map {
             BloodGlucoseMetric(
                 timestamp = it.time,
                 mgDl = it.level.inMilligramsPerDeciliter
             )
         }
+        
+        val source = response.records.firstOrNull()?.metadata?.dataOrigin?.packageName
+        return Pair(metrics, source)
     }
 
     suspend fun getLatestBodyTemperature(): BodyTemperatureMetric? {
@@ -525,7 +546,7 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getTodayBodyTemperature(): List<BodyTemperatureMetric> {
+    suspend fun getTodayBodyTemperature(): Pair<List<BodyTemperatureMetric>, String?> {
         val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
@@ -535,12 +556,15 @@ class HealthConnectRepository(
             )
         )
 
-        return response.records.map {
+        val metrics = response.records.map {
             BodyTemperatureMetric(
                 timestamp = it.time,
                 celsius = it.temperature.inCelsius
             )
         }
+        
+        val source = response.records.firstOrNull()?.metadata?.dataOrigin?.packageName
+        return Pair(metrics, source)
     }
 
     suspend fun getLatestOxygenSaturation(): OxygenSaturationMetric? {
@@ -563,7 +587,7 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getTodayOxygenSaturation(): List<OxygenSaturationMetric> {
+    suspend fun getTodayOxygenSaturation(): Pair<List<OxygenSaturationMetric>, String?> {
         val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
@@ -573,12 +597,15 @@ class HealthConnectRepository(
             )
         )
 
-        return response.records.map {
+        val metrics = response.records.map {
             OxygenSaturationMetric(
                 timestamp = it.time,
                 percentage = it.percentage.value
             )
         }
+        
+        val source = response.records.firstOrNull()?.metadata?.dataOrigin?.packageName
+        return Pair(metrics, source)
     }
 
     /**
@@ -772,7 +799,7 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getTodayRestingHeartRate(): List<RestingHeartRateMetric> {
+    suspend fun getTodayRestingHeartRate(): Pair<List<RestingHeartRateMetric>, String?> {
         val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
@@ -782,12 +809,17 @@ class HealthConnectRepository(
             )
         )
 
-        return response.records.map {
+        val metrics = response.records.map {
             RestingHeartRateMetric(
                 timestamp = it.time,
                 bpm = it.beatsPerMinute
             )
         }
+        
+        // Get source from first record if available
+        val source = response.records.firstOrNull()?.metadata?.dataOrigin?.packageName
+        
+        return Pair(metrics, source)
     }
 
     suspend fun getLatestRespiratoryRate(): RespiratoryRateMetric? {
@@ -810,7 +842,7 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getTodayRespiratoryRate(): List<RespiratoryRateMetric> {
+    suspend fun getTodayRespiratoryRate(): Pair<List<RespiratoryRateMetric>, String?> {
         val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
@@ -820,12 +852,15 @@ class HealthConnectRepository(
             )
         )
 
-        return response.records.map {
+        val metrics = response.records.map {
             RespiratoryRateMetric(
                 timestamp = it.time,
                 breathsPerMinute = it.rate
             )
         }
+        
+        val source = response.records.firstOrNull()?.metadata?.dataOrigin?.packageName
+        return Pair(metrics, source)
     }
 
     suspend fun getBloodGlucoseForDate(date: LocalDate): List<BloodGlucoseMetric> {

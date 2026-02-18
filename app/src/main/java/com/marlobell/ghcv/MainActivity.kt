@@ -7,7 +7,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -59,8 +61,13 @@ import com.marlobell.ghcv.ui.theme.GhcvTheme
 class MainActivity : ComponentActivity() {
     
     private lateinit var healthConnectManager: HealthConnectManager
+    private var isCheckingPermissions = mutableStateOf(true)
     
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Install splash screen and keep it visible while checking permissions
+        val splashScreen = installSplashScreen()
+        splashScreen.setKeepOnScreenCondition { isCheckingPermissions.value }
+        
         super.onCreate(savedInstanceState)
         
         Log.d("GHCV", "MainActivity onCreate")
@@ -69,20 +76,25 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             GhcvTheme {
-                HealthConnectApp(healthConnectManager)
+                HealthConnectApp(
+                    healthConnectManager = healthConnectManager,
+                    onCheckingComplete = { isCheckingPermissions.value = false }
+                )
             }
         }
     }
 }
 
 @Composable
-fun HealthConnectApp(healthConnectManager: HealthConnectManager) {
+fun HealthConnectApp(
+    healthConnectManager: HealthConnectManager,
+    onCheckingComplete: () -> Unit = {}
+) {
     // Observe the availability state from HealthConnectManager
     val healthConnectAvailability by remember { healthConnectManager.availability }
     val healthConnectAvailable = healthConnectAvailability == HealthConnectClient.SDK_AVAILABLE
     
-    var permissionsGranted by remember { mutableStateOf(false) }
-    var checkingPermissions by remember { mutableStateOf(true) }
+    var permissionsGranted by remember { mutableStateOf<Boolean?>(null) } // null = checking
     val context = LocalContext.current
     
     LaunchedEffect(Unit) {
@@ -95,10 +107,16 @@ fun HealthConnectApp(healthConnectManager: HealthConnectManager) {
             healthConnectManager.triggerHealthConnectRegistration()
             
             // Then check permissions
-            permissionsGranted = healthConnectManager.hasAllPermissions()
-            Log.d("GHCV", "Permissions granted: $permissionsGranted")
+            val granted = healthConnectManager.hasAllPermissions()
+            Log.d("GHCV", "Permissions granted: $granted")
+            permissionsGranted = granted
+        } else {
+            // Not available, so set to false to show error screen
+            permissionsGranted = false
         }
-        checkingPermissions = false
+        
+        // Notify that checking is complete
+        onCheckingComplete()
     }
     
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -106,27 +124,32 @@ fun HealthConnectApp(healthConnectManager: HealthConnectManager) {
     ) { granted ->
         Log.d("GHCV", "Permission launcher result: $granted")
         // After permission request, recheck if all permissions are granted
-        checkingPermissions = true
+        // Use LaunchedEffect to check in a coroutine context
+        permissionsGranted = null // Trigger recheck
     }
     
-    // Recheck permissions after permission launcher completes
-    LaunchedEffect(checkingPermissions) {
-        if (checkingPermissions && healthConnectAvailable) {
-            Log.d("GHCV", "Rechecking permissions...")
-            permissionsGranted = healthConnectManager.hasAllPermissions()
-            Log.d("GHCV", "Permissions now: $permissionsGranted")
-            checkingPermissions = false
+    // Recheck after permission launcher
+    LaunchedEffect(permissionsGranted) {
+        if (permissionsGranted == null && healthConnectAvailable) {
+            val allGranted = healthConnectManager.hasAllPermissions()
+            Log.d("GHCV", "Permissions now: $allGranted")
+            permissionsGranted = allGranted
         }
     }
     
     when {
+        permissionsGranted == null -> {
+            // Still checking - splash screen is kept visible, render nothing
+            Log.d("GHCV", "Still checking permissions...")
+            // Empty composable - splash screen stays visible due to setKeepOnScreenCondition
+        }
         !healthConnectAvailable -> {
             Log.d("GHCV", "Showing unavailable screen")
             Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                 HealthConnectUnavailableScreen(Modifier.padding(innerPadding))
             }
         }
-        !permissionsGranted -> {
+        permissionsGranted == false -> {
             Log.d("GHCV", "Showing permission request screen")
             Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                 PermissionRequestScreen(

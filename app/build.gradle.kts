@@ -72,6 +72,9 @@ dependencies {
     // Health Connect
     implementation(libs.androidx.health.connect)
     
+    // Splash Screen
+    implementation("androidx.core:core-splashscreen:1.0.1")
+    
     // Charts
     implementation(libs.vico.compose)
     implementation(libs.vico.compose.m3)

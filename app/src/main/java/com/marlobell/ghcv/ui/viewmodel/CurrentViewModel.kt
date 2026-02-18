@@ -31,13 +31,19 @@ import kotlin.reflect.KClass
 
 data class CurrentHealthData(
     val steps: Long = 0,
+    val stepsSource: String? = null,
     val heartRate: Long? = null,
+    val heartRateSource: String? = null,
     val heartRateTimestamp: Instant? = null,
     val todayAvgHeartRate: Long? = null,
     val activeCalories: Double = 0.0,
+    val activeCaloriesSource: String? = null,
     val sleepLastNight: Long? = null,
+    val sleepSource: String? = null,
     val distance: Double = 0.0,
+    val distanceSource: String? = null,
     val exerciseSessions: Int = 0,
+    val exerciseSource: String? = null,
     val sevenDayAvgSteps: Long = 0,
     val sevenDayAvgSleep: Long = 0,
     val sevenDayAvgCalories: Double = 0.0,
@@ -50,11 +56,17 @@ data class CurrentHealthData(
     val sevenDayAvgRestingHeartRate: Long? = null,
     val sevenDayAvgRespiratoryRate: Double? = null,
     val bloodPressure: VitalStats<BloodPressureMetric> = VitalStats(),
+    val bloodPressureSource: String? = null,
     val bloodGlucose: VitalStats<Double> = VitalStats(),
+    val bloodGlucoseSource: String? = null,
     val bodyTemperature: VitalStats<Double> = VitalStats(),
+    val bodyTemperatureSource: String? = null,
     val oxygenSaturation: VitalStats<Double> = VitalStats(),
+    val oxygenSaturationSource: String? = null,
     val restingHeartRate: VitalStats<Long> = VitalStats(),
+    val restingHeartRateSource: String? = null,
     val respiratoryRate: VitalStats<Double> = VitalStats(),
+    val respiratoryRateSource: String? = null,
     val lastUpdated: Instant? = null,
     // Categorized metrics for UI sections
     val metricsWithData: List<MetricInfo> = emptyList(),
@@ -226,24 +238,24 @@ class CurrentViewModel(
             _uiState.value = UiState.Loading
             
             tryWithPermissionsCheck {
-                // Fetch main metrics with individual error handling
-                val steps = try {
+                // Fetch main metrics with individual error handling and data sources
+                val (steps, stepsSource) = try {
                     repository.getTodaySteps()
                 } catch (e: Exception) {
                     Log.w("CurrentViewModel", "Failed to fetch steps", e)
-                    0L
+                    Pair(0L, null)
                 }
                 
-                val heartRate = try {
+                val (heartRate, heartRateSource) = try {
                     repository.getLatestHeartRate()
                 } catch (e: Exception) {
                     Log.w("CurrentViewModel", "Failed to fetch heart rate", e)
-                    null
+                    Pair(null, null)
                 }
                 
                 // Calculate today's average resting heart rate (or fall back to regular HR average)
                 val todayAvgHeartRate = try {
-                    val restingHRToday = repository.getTodayRestingHeartRate()
+                    val (restingHRToday, _) = repository.getTodayRestingHeartRate()
                     if (restingHRToday.isNotEmpty()) {
                         val avg = (restingHRToday.map { it.bpm.toDouble() }.average()).toLong()
                         Log.d("CurrentViewModel", "Resting HR avg from ${restingHRToday.size} samples: $avg bpm")
@@ -261,10 +273,11 @@ class CurrentViewModel(
                     null
                 }
                 
-                val calories = try {
+                val (calories, caloriesSource) = try {
                     repository.getTodayActiveCalories()
                 } catch (e: Exception) {
-                    0.0
+                    Log.w("CurrentViewModel", "Failed to fetch active calories", e)
+                    Pair(0.0, null)
                 }
                 
                 val distance = try {
@@ -327,43 +340,47 @@ class CurrentViewModel(
                 
                 // Sleep from last night (yesterday's date)
                 val yesterday = LocalDate.now().minusDays(1)
-                val sleepData = try {
+                val (sleepData, sleepSource) = try {
                     repository.getSleepForDate(yesterday)
                 } catch (e: Exception) {
-                    null
+                    Pair(null, null)
                 }
 
                 // Fetch all vitals with individual error handling
+                val (bloodPressureList, bloodPressureSource) = repository.getTodayBloodPressure()
                 val bloodPressureStats = buildVitalStats(
                     latestMetric = repository.getLatestBloodPressure(),
-                    todayReadings = repository.getTodayBloodPressure(),
+                    todayReadings = bloodPressureList,
                     valueExtractor = { it.systolic },
                     latestValueExtractor = { it },
                     latestTimestampExtractor = { it.timestamp },
                     metricName = "Blood pressure"
                 )
                 
+                val (bloodGlucoseList, bloodGlucoseSource) = repository.getTodayBloodGlucose()
                 val bloodGlucoseStats = buildVitalStats(
                     latestMetric = repository.getLatestBloodGlucose(),
-                    todayReadings = repository.getTodayBloodGlucose(),
+                    todayReadings = bloodGlucoseList,
                     valueExtractor = { it.mgDl },
                     latestValueExtractor = { it.mgDl },
                     latestTimestampExtractor = { it.timestamp },
                     metricName = "Blood glucose"
                 )
                 
+                val (bodyTemperatureList, bodyTemperatureSource) = repository.getTodayBodyTemperature()
                 val bodyTemperatureStats = buildVitalStats(
                     latestMetric = repository.getLatestBodyTemperature(),
-                    todayReadings = repository.getTodayBodyTemperature(),
+                    todayReadings = bodyTemperatureList,
                     valueExtractor = { it.celsius },
                     latestValueExtractor = { it.celsius },
                     latestTimestampExtractor = { it.timestamp },
                     metricName = "Body temperature"
                 )
                 
+                val (oxygenSaturationList, oxygenSaturationSource) = repository.getTodayOxygenSaturation()
                 val oxygenSaturationStats = buildVitalStats(
                     latestMetric = repository.getLatestOxygenSaturation(),
-                    todayReadings = repository.getTodayOxygenSaturation(),
+                    todayReadings = oxygenSaturationList,
                     valueExtractor = { it.percentage },
                     latestValueExtractor = { it.percentage },
                     latestTimestampExtractor = { it.timestamp },
@@ -372,18 +389,20 @@ class CurrentViewModel(
                 
                 // Note: These vitals may trigger rate limiting if queried too frequently
                 // Using try-catch with proper exception handling
+                val (restingHeartRateList, restingHeartRateSource) = repository.getTodayRestingHeartRate()
                 val restingHeartRateStats = buildVitalStats(
                     latestMetric = repository.getLatestRestingHeartRate(),
-                    todayReadings = repository.getTodayRestingHeartRate(),
+                    todayReadings = restingHeartRateList,
                     valueExtractor = { it.bpm.toDouble() },
                     latestValueExtractor = { it.bpm },
                     latestTimestampExtractor = { it.timestamp },
                     metricName = "Resting heart rate"
                 )
                 
+                val (respiratoryRateList, respiratoryRateSource) = repository.getTodayRespiratoryRate()
                 val respiratoryRateStats = buildVitalStats(
                     latestMetric = repository.getLatestRespiratoryRate(),
-                    todayReadings = repository.getTodayRespiratoryRate(),
+                    todayReadings = respiratoryRateList,
                     valueExtractor = { it.breathsPerMinute },
                     latestValueExtractor = { it.breathsPerMinute },
                     latestTimestampExtractor = { it.timestamp },
@@ -544,11 +563,15 @@ class CurrentViewModel(
 
                 _healthData.value = CurrentHealthData(
                     steps = steps,
+                    stepsSource = stepsSource,
                     heartRate = heartRate?.bpm,
+                    heartRateSource = heartRateSource,
                     heartRateTimestamp = heartRate?.timestamp,
                     todayAvgHeartRate = todayAvgHeartRate,
                     activeCalories = calories,
+                    activeCaloriesSource = caloriesSource,
                     sleepLastNight = sleepData?.durationMinutes,
+                    sleepSource = sleepSource,
                     distance = distance,
                     exerciseSessions = exerciseSessions,
                     sevenDayAvgSteps = sevenDayAvgSteps,
@@ -562,11 +585,17 @@ class CurrentViewModel(
                     sevenDayAvgRestingHeartRate = sevenDayAvgRestingHR,
                     sevenDayAvgRespiratoryRate = sevenDayAvgRespRate,
                     bloodPressure = bloodPressureStats,
+                    bloodPressureSource = bloodPressureSource,
                     bloodGlucose = bloodGlucoseStats,
+                    bloodGlucoseSource = bloodGlucoseSource,
                     bodyTemperature = bodyTemperatureStats,
+                    bodyTemperatureSource = bodyTemperatureSource,
                     oxygenSaturation = oxygenSaturationStats,
+                    oxygenSaturationSource = oxygenSaturationSource,
                     restingHeartRate = restingHeartRateStats,
+                    restingHeartRateSource = restingHeartRateSource,
                     respiratoryRate = respiratoryRateStats,
+                    respiratoryRateSource = respiratoryRateSource,
                     lastUpdated = Instant.now(),
                     // Comparisons
                     stepsComparison = stepsComp,

@@ -1,4 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Base application theme -->
     <style name="Theme.Ghcv" parent="android:Theme.Material.Light.NoActionBar" />
+    
+    <!-- Splash screen theme -->
+    <style name="Theme.Ghcv.Splash" parent="Theme.SplashScreen">
+        <!-- Set the splash screen background color -->
+        <item name="windowSplashScreenBackground">#1a1a1a</item>
+        <!-- Set the splash screen icon -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <!-- Icon background color (should match app icon background) -->
+        <item name="windowSplashScreenIconBackgroundColor">#1a1a1a</item>
+        <!-- Duration to show the splash screen -->
+        <item name="windowSplashScreenAnimationDuration">500</item>
+        <!-- Post splash screen theme -->
+        <item name="postSplashScreenTheme">@style/Theme.Ghcv</item>
+    </style>
 </resources>

@@ -17,6 +17,7 @@ import com.marlobell.ghcv.data.HealthConnectManager
 import com.marlobell.ghcv.data.repository.HealthConnectRepository
 import com.marlobell.ghcv.ui.components.SleepStageChart
 import com.marlobell.ghcv.ui.model.MetricCardIds
+import com.marlobell.ghcv.ui.theme.*
 import com.marlobell.ghcv.ui.viewmodel.HistoricalViewModel
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottomAxis
@@ -131,6 +132,8 @@ fun HistoricalScreen(
                 value = "${uiState.steps}",
                 isExpanded = uiState.expandedSections.contains(MetricCardIds.STEPS),
                 onToggle = { viewModel.toggleSection(MetricCardIds.STEPS) },
+                containerColor = ActivityColors.containerColor(),
+                contentColor = ActivityColors.contentColor(),
                 comparisonText = if (uiState.previousDaySteps > 0) {
                     val diff = uiState.steps - uiState.previousDaySteps
                     val sign = if (diff >= 0) "+" else ""
@@ -152,7 +155,9 @@ fun HistoricalScreen(
                     value = "${String.format(Locale.US, "%.1f", uiState.averageHeartRate)} bpm",
                     subtitle = "${uiState.minHeartRate}-${uiState.maxHeartRate} bpm range",
                     isExpanded = uiState.expandedSections.contains(MetricCardIds.HEART_RATE),
-                    onToggle = { viewModel.toggleSection(MetricCardIds.HEART_RATE) }
+                    onToggle = { viewModel.toggleSection(MetricCardIds.HEART_RATE) },
+                    containerColor = CardiovascularColors.containerColor(),
+                    contentColor = CardiovascularColors.contentColor()
                 ) {
                     Column {
                         Text(
@@ -189,7 +194,9 @@ fun HistoricalScreen(
                     icon = Icons.Filled.Bedtime,
                     value = "${hours}h ${minutes}m",
                     isExpanded = uiState.expandedSections.contains(MetricCardIds.SLEEP),
-                    onToggle = { viewModel.toggleSection(MetricCardIds.SLEEP) }
+                    onToggle = { viewModel.toggleSection(MetricCardIds.SLEEP) },
+                    containerColor = SleepColors.containerColor(),
+                    contentColor = SleepColors.contentColor()
                 ) {
                     Column {
                         Text(
@@ -221,7 +228,9 @@ fun HistoricalScreen(
                     icon = Icons.Filled.LocalFireDepartment,
                     value = "${String.format(Locale.US, "%.0f", uiState.activeCalories)} kcal",
                     isExpanded = uiState.expandedSections.contains(MetricCardIds.ACTIVE_CALORIES),
-                    onToggle = { viewModel.toggleSection(MetricCardIds.ACTIVE_CALORIES) }
+                    onToggle = { viewModel.toggleSection(MetricCardIds.ACTIVE_CALORIES) },
+                    containerColor = ActivityColors.containerColor(),
+                    contentColor = ActivityColors.contentColor()
                 ) {
                     Text(
                         text = "Total active calories burned throughout the day",
@@ -242,7 +251,9 @@ fun HistoricalScreen(
                     value = "${String.format(Locale.US, "%.0f", avgSystolic)}/${String.format(Locale.US, "%.0f", avgDiastolic)} mmHg",
                     subtitle = "${uiState.bloodPressureData.size} readings",
                     isExpanded = uiState.expandedSections.contains(MetricCardIds.BLOOD_PRESSURE),
-                    onToggle = { viewModel.toggleSection(MetricCardIds.BLOOD_PRESSURE) }
+                    onToggle = { viewModel.toggleSection(MetricCardIds.BLOOD_PRESSURE) },
+                    containerColor = CardiovascularColors.containerColor(),
+                    contentColor = CardiovascularColors.contentColor()
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -282,7 +293,9 @@ fun HistoricalScreen(
                     value = "${String.format(Locale.US, "%.0f", avgGlucose)} mg/dL",
                     subtitle = "${uiState.bloodGlucoseData.size} readings",
                     isExpanded = uiState.expandedSections.contains(MetricCardIds.BLOOD_GLUCOSE),
-                    onToggle = { viewModel.toggleSection(MetricCardIds.BLOOD_GLUCOSE) }
+                    onToggle = { viewModel.toggleSection(MetricCardIds.BLOOD_GLUCOSE) },
+                    containerColor = MetabolicColors.containerColor(),
+                    contentColor = MetabolicColors.contentColor()
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -322,7 +335,9 @@ fun HistoricalScreen(
                     value = "${String.format(Locale.US, "%.1f", avgTemp)}°C",
                     subtitle = "${uiState.bodyTemperatureData.size} readings",
                     isExpanded = uiState.expandedSections.contains(MetricCardIds.BODY_TEMPERATURE),
-                    onToggle = { viewModel.toggleSection(MetricCardIds.BODY_TEMPERATURE) }
+                    onToggle = { viewModel.toggleSection(MetricCardIds.BODY_TEMPERATURE) },
+                    containerColor = MetabolicColors.containerColor(),
+                    contentColor = MetabolicColors.contentColor()
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -362,7 +377,9 @@ fun HistoricalScreen(
                     value = "${String.format(Locale.US, "%.1f", avgOxygen)}%",
                     subtitle = "${uiState.oxygenSaturationData.size} readings",
                     isExpanded = uiState.expandedSections.contains(MetricCardIds.OXYGEN_SATURATION),
-                    onToggle = { viewModel.toggleSection(MetricCardIds.OXYGEN_SATURATION) }
+                    onToggle = { viewModel.toggleSection(MetricCardIds.OXYGEN_SATURATION) },
+                    containerColor = RespiratoryColors.containerColor(),
+                    contentColor = RespiratoryColors.contentColor()
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -402,7 +419,9 @@ fun HistoricalScreen(
                     value = "${String.format(Locale.US, "%.0f", avgRhr)} bpm",
                     subtitle = "${uiState.restingHeartRateData.size} readings",
                     isExpanded = uiState.expandedSections.contains(MetricCardIds.RESTING_HEART_RATE),
-                    onToggle = { viewModel.toggleSection(MetricCardIds.RESTING_HEART_RATE) }
+                    onToggle = { viewModel.toggleSection(MetricCardIds.RESTING_HEART_RATE) },
+                    containerColor = CardiovascularColors.containerColor(),
+                    contentColor = CardiovascularColors.contentColor()
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -442,7 +461,9 @@ fun HistoricalScreen(
                     value = "${String.format(Locale.US, "%.1f", avgRespRate)} breaths/min",
                     subtitle = "${uiState.respiratoryRateData.size} readings",
                     isExpanded = uiState.expandedSections.contains(MetricCardIds.RESPIRATORY_RATE),
-                    onToggle = { viewModel.toggleSection(MetricCardIds.RESPIRATORY_RATE) }
+                    onToggle = { viewModel.toggleSection(MetricCardIds.RESPIRATORY_RATE) },
+                    containerColor = RespiratoryColors.containerColor(),
+                    contentColor = RespiratoryColors.contentColor()
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -479,7 +500,9 @@ fun HistoricalScreen(
                     icon = Icons.Filled.Place,
                     value = "${String.format(Locale.US, "%.2f", uiState.distance / 1000)} km",
                     isExpanded = uiState.expandedSections.contains(MetricCardIds.DISTANCE),
-                    onToggle = { viewModel.toggleSection(MetricCardIds.DISTANCE) }
+                    onToggle = { viewModel.toggleSection(MetricCardIds.DISTANCE) },
+                    containerColor = ActivityColors.containerColor(),
+                    contentColor = ActivityColors.contentColor()
                 ) {
                     Text(
                         text = "Total distance traveled throughout the day",
@@ -497,7 +520,9 @@ fun HistoricalScreen(
                     value = "${uiState.exerciseSessions}",
                     subtitle = "sessions completed",
                     isExpanded = uiState.expandedSections.contains(MetricCardIds.EXERCISE),
-                    onToggle = { viewModel.toggleSection(MetricCardIds.EXERCISE) }
+                    onToggle = { viewModel.toggleSection(MetricCardIds.EXERCISE) },
+                    containerColor = ActivityColors.containerColor(),
+                    contentColor = ActivityColors.contentColor()
                 ) {
                     Text(
                         text = "Total exercise sessions recorded for the day",
@@ -547,9 +572,16 @@ fun ExpandableMetricCard(
     comparisonText: String? = null,
     isExpanded: Boolean = false,
     onToggle: () -> Unit,
+    containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceVariant,
+    contentColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
     expandedContent: @Composable ColumnScope.() -> Unit
 ) {
-    Card(modifier = modifier.fillMaxWidth()) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor
+        )
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier
@@ -566,22 +598,25 @@ fun ExpandableMetricCard(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
+                        tint = contentColor,
                         modifier = Modifier.size(24.dp)
                     )
                     Column {
                         Text(
                             text = title,
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
+                            color = contentColor
                         )
                         Text(
                             text = value,
-                            style = MaterialTheme.typography.headlineSmall
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = contentColor
                         )
                         subtitle?.let {
                             Text(
                                 text = it,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = contentColor.copy(alpha = 0.7f)
                             )
                         }
                         comparisonText?.let {
@@ -595,7 +630,8 @@ fun ExpandableMetricCard(
                 }
                 Icon(
                     imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = if (isExpanded) "Collapse" else "Expand"
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = contentColor
                 )
             }
             
