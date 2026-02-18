@@ -61,10 +61,12 @@ import com.marlobell.ghcv.ui.theme.GhcvTheme
 class MainActivity : ComponentActivity() {
     
     private lateinit var healthConnectManager: HealthConnectManager
+    private var isCheckingPermissions = mutableStateOf(true)
     
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Install splash screen before super.onCreate()
-        installSplashScreen()
+        // Install splash screen and keep it visible while checking permissions
+        val splashScreen = installSplashScreen()
+        splashScreen.setKeepOnScreenCondition { isCheckingPermissions.value }
         
         super.onCreate(savedInstanceState)
         
@@ -74,14 +76,20 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             GhcvTheme {
-                HealthConnectApp(healthConnectManager)
+                HealthConnectApp(
+                    healthConnectManager = healthConnectManager,
+                    onCheckingComplete = { isCheckingPermissions.value = false }
+                )
             }
         }
     }
 }
 
 @Composable
-fun HealthConnectApp(healthConnectManager: HealthConnectManager) {
+fun HealthConnectApp(
+    healthConnectManager: HealthConnectManager,
+    onCheckingComplete: () -> Unit = {}
+) {
     // Observe the availability state from HealthConnectManager
     val healthConnectAvailability by remember { healthConnectManager.availability }
     val healthConnectAvailable = healthConnectAvailability == HealthConnectClient.SDK_AVAILABLE
@@ -106,6 +114,9 @@ fun HealthConnectApp(healthConnectManager: HealthConnectManager) {
             // Not available, so set to false to show error screen
             permissionsGranted = false
         }
+        
+        // Notify that checking is complete
+        onCheckingComplete()
     }
     
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -128,9 +139,9 @@ fun HealthConnectApp(healthConnectManager: HealthConnectManager) {
     
     when {
         permissionsGranted == null -> {
-            // Still checking - keep splash screen visible by showing nothing
+            // Still checking - splash screen is kept visible, render nothing
             Log.d("GHCV", "Still checking permissions...")
-            Box(modifier = Modifier.fillMaxSize())
+            // Empty composable - splash screen stays visible due to setKeepOnScreenCondition
         }
         !healthConnectAvailable -> {
             Log.d("GHCV", "Showing unavailable screen")
