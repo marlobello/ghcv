@@ -779,7 +779,7 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getLatestRestingHeartRate(): RestingHeartRateMetric? {
+    suspend fun getLatestRestingHeartRate(): Pair<RestingHeartRateMetric?, String?> {
         val endTime = Instant.now()
         val startTime = endTime.minus(7, ChronoUnit.DAYS)
 
@@ -791,12 +791,15 @@ class HealthConnectRepository(
         )
 
         val latest = response.records.maxByOrNull { it.time }
-        return latest?.let {
+        val metric = latest?.let {
             RestingHeartRateMetric(
                 timestamp = it.time,
                 bpm = it.beatsPerMinute
             )
         }
+        val source = latest?.metadata?.dataOrigin?.packageName
+        
+        return Pair(metric, source)
     }
 
     suspend fun getTodayRestingHeartRate(): Pair<List<RestingHeartRateMetric>, String?> {

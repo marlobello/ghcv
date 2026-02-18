@@ -389,15 +389,18 @@ class CurrentViewModel(
                 
                 // Note: These vitals may trigger rate limiting if queried too frequently
                 // Using try-catch with proper exception handling
-                val (restingHeartRateList, restingHeartRateSource) = repository.getTodayRestingHeartRate()
+                val (restingHeartRateList, todayRestingHeartRateSource) = repository.getTodayRestingHeartRate()
+                val (latestRestingHeartRate, latestRestingHeartRateSource) = repository.getLatestRestingHeartRate()
                 val restingHeartRateStats = buildVitalStats(
-                    latestMetric = repository.getLatestRestingHeartRate(),
+                    latestMetric = latestRestingHeartRate,
                     todayReadings = restingHeartRateList,
                     valueExtractor = { it.bpm.toDouble() },
                     latestValueExtractor = { it.bpm },
                     latestTimestampExtractor = { it.timestamp },
                     metricName = "Resting heart rate"
                 )
+                // Use today's source if available, otherwise use latest source
+                val restingHeartRateSource = todayRestingHeartRateSource ?: latestRestingHeartRateSource
                 
                 val (respiratoryRateList, respiratoryRateSource) = repository.getTodayRespiratoryRate()
                 val respiratoryRateStats = buildVitalStats(
