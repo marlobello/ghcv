@@ -347,36 +347,40 @@ class CurrentViewModel(
                 }
 
                 // Fetch all vitals with individual error handling
+                val (bloodPressureList, bloodPressureSource) = repository.getTodayBloodPressure()
                 val bloodPressureStats = buildVitalStats(
                     latestMetric = repository.getLatestBloodPressure(),
-                    todayReadings = repository.getTodayBloodPressure(),
+                    todayReadings = bloodPressureList,
                     valueExtractor = { it.systolic },
                     latestValueExtractor = { it },
                     latestTimestampExtractor = { it.timestamp },
                     metricName = "Blood pressure"
                 )
                 
+                val (bloodGlucoseList, bloodGlucoseSource) = repository.getTodayBloodGlucose()
                 val bloodGlucoseStats = buildVitalStats(
                     latestMetric = repository.getLatestBloodGlucose(),
-                    todayReadings = repository.getTodayBloodGlucose(),
+                    todayReadings = bloodGlucoseList,
                     valueExtractor = { it.mgDl },
                     latestValueExtractor = { it.mgDl },
                     latestTimestampExtractor = { it.timestamp },
                     metricName = "Blood glucose"
                 )
                 
+                val (bodyTemperatureList, bodyTemperatureSource) = repository.getTodayBodyTemperature()
                 val bodyTemperatureStats = buildVitalStats(
                     latestMetric = repository.getLatestBodyTemperature(),
-                    todayReadings = repository.getTodayBodyTemperature(),
+                    todayReadings = bodyTemperatureList,
                     valueExtractor = { it.celsius },
                     latestValueExtractor = { it.celsius },
                     latestTimestampExtractor = { it.timestamp },
                     metricName = "Body temperature"
                 )
                 
+                val (oxygenSaturationList, oxygenSaturationSource) = repository.getTodayOxygenSaturation()
                 val oxygenSaturationStats = buildVitalStats(
                     latestMetric = repository.getLatestOxygenSaturation(),
-                    todayReadings = repository.getTodayOxygenSaturation(),
+                    todayReadings = oxygenSaturationList,
                     valueExtractor = { it.percentage },
                     latestValueExtractor = { it.percentage },
                     latestTimestampExtractor = { it.timestamp },
@@ -395,9 +399,10 @@ class CurrentViewModel(
                     metricName = "Resting heart rate"
                 )
                 
+                val (respiratoryRateList, respiratoryRateSource) = repository.getTodayRespiratoryRate()
                 val respiratoryRateStats = buildVitalStats(
                     latestMetric = repository.getLatestRespiratoryRate(),
-                    todayReadings = repository.getTodayRespiratoryRate(),
+                    todayReadings = respiratoryRateList,
                     valueExtractor = { it.breathsPerMinute },
                     latestValueExtractor = { it.breathsPerMinute },
                     latestTimestampExtractor = { it.timestamp },
@@ -580,12 +585,17 @@ class CurrentViewModel(
                     sevenDayAvgRestingHeartRate = sevenDayAvgRestingHR,
                     sevenDayAvgRespiratoryRate = sevenDayAvgRespRate,
                     bloodPressure = bloodPressureStats,
+                    bloodPressureSource = bloodPressureSource,
                     bloodGlucose = bloodGlucoseStats,
+                    bloodGlucoseSource = bloodGlucoseSource,
                     bodyTemperature = bodyTemperatureStats,
+                    bodyTemperatureSource = bodyTemperatureSource,
                     oxygenSaturation = oxygenSaturationStats,
+                    oxygenSaturationSource = oxygenSaturationSource,
                     restingHeartRate = restingHeartRateStats,
                     restingHeartRateSource = restingHeartRateSource,
                     respiratoryRate = respiratoryRateStats,
+                    respiratoryRateSource = respiratoryRateSource,
                     lastUpdated = Instant.now(),
                     // Comparisons
                     stepsComparison = stepsComp,

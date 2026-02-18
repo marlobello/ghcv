@@ -463,7 +463,7 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getTodayBloodPressure(): List<BloodPressureMetric> {
+    suspend fun getTodayBloodPressure(): Pair<List<BloodPressureMetric>, String?> {
         val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
@@ -473,13 +473,16 @@ class HealthConnectRepository(
             )
         )
 
-        return response.records.map {
+        val metrics = response.records.map {
             BloodPressureMetric(
                 timestamp = it.time,
                 systolic = it.systolic.inMillimetersOfMercury,
                 diastolic = it.diastolic.inMillimetersOfMercury
             )
         }
+        
+        val source = response.records.firstOrNull()?.metadata?.dataOrigin?.packageName
+        return Pair(metrics, source)
     }
 
     suspend fun getLatestBloodGlucose(): BloodGlucoseMetric? {
@@ -502,7 +505,7 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getTodayBloodGlucose(): List<BloodGlucoseMetric> {
+    suspend fun getTodayBloodGlucose(): Pair<List<BloodGlucoseMetric>, String?> {
         val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
@@ -512,12 +515,15 @@ class HealthConnectRepository(
             )
         )
 
-        return response.records.map {
+        val metrics = response.records.map {
             BloodGlucoseMetric(
                 timestamp = it.time,
                 mgDl = it.level.inMilligramsPerDeciliter
             )
         }
+        
+        val source = response.records.firstOrNull()?.metadata?.dataOrigin?.packageName
+        return Pair(metrics, source)
     }
 
     suspend fun getLatestBodyTemperature(): BodyTemperatureMetric? {
@@ -540,7 +546,7 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getTodayBodyTemperature(): List<BodyTemperatureMetric> {
+    suspend fun getTodayBodyTemperature(): Pair<List<BodyTemperatureMetric>, String?> {
         val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
@@ -550,12 +556,15 @@ class HealthConnectRepository(
             )
         )
 
-        return response.records.map {
+        val metrics = response.records.map {
             BodyTemperatureMetric(
                 timestamp = it.time,
                 celsius = it.temperature.inCelsius
             )
         }
+        
+        val source = response.records.firstOrNull()?.metadata?.dataOrigin?.packageName
+        return Pair(metrics, source)
     }
 
     suspend fun getLatestOxygenSaturation(): OxygenSaturationMetric? {
@@ -578,7 +587,7 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getTodayOxygenSaturation(): List<OxygenSaturationMetric> {
+    suspend fun getTodayOxygenSaturation(): Pair<List<OxygenSaturationMetric>, String?> {
         val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
@@ -588,12 +597,15 @@ class HealthConnectRepository(
             )
         )
 
-        return response.records.map {
+        val metrics = response.records.map {
             OxygenSaturationMetric(
                 timestamp = it.time,
                 percentage = it.percentage.value
             )
         }
+        
+        val source = response.records.firstOrNull()?.metadata?.dataOrigin?.packageName
+        return Pair(metrics, source)
     }
 
     /**
@@ -830,7 +842,7 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getTodayRespiratoryRate(): List<RespiratoryRateMetric> {
+    suspend fun getTodayRespiratoryRate(): Pair<List<RespiratoryRateMetric>, String?> {
         val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
@@ -840,12 +852,15 @@ class HealthConnectRepository(
             )
         )
 
-        return response.records.map {
+        val metrics = response.records.map {
             RespiratoryRateMetric(
                 timestamp = it.time,
                 breathsPerMinute = it.rate
             )
         }
+        
+        val source = response.records.firstOrNull()?.metadata?.dataOrigin?.packageName
+        return Pair(metrics, source)
     }
 
     suspend fun getBloodGlucoseForDate(date: LocalDate): List<BloodGlucoseMetric> {
