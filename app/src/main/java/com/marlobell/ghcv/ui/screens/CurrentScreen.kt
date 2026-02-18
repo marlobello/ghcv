@@ -22,6 +22,7 @@ import com.marlobell.ghcv.ui.components.CollapsibleSection
 import com.marlobell.ghcv.ui.components.SmallMetricCard
 import com.marlobell.ghcv.ui.model.MetricCardIds
 import com.marlobell.ghcv.ui.navigation.Screen
+import com.marlobell.ghcv.ui.theme.*
 import com.marlobell.ghcv.ui.viewmodel.CurrentViewModel
 import java.time.Duration
 import java.time.Instant
@@ -123,8 +124,8 @@ fun CurrentScreen(
                         value = "${healthData.steps}",
                         icon = Icons.AutoMirrored.Filled.DirectionsWalk,
                         comparison = healthData.stepsComparison,
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        containerColor = ActivityColors.containerColor(),
+                        contentColor = ActivityColors.contentColor(),
                         onClick = {
                             navController.navigate(
                                 Screen.Historical.createRoute(
@@ -148,6 +149,8 @@ fun CurrentScreen(
                         icon = Icons.Filled.Favorite,
                         subtitle = if (timeStr.isNotEmpty()) "Measured at $timeStr" else null,
                         comparison = healthData.heartRateComparison,
+                        containerColor = CardiovascularColors.containerColor(),
+                        contentColor = CardiovascularColors.contentColor(),
                         onClick = {
                             navController.navigate(
                                 Screen.Historical.createRoute(
@@ -169,6 +172,8 @@ fun CurrentScreen(
                         icon = Icons.Filled.Bedtime,
                         subtitle = "Total sleep duration",
                         comparison = healthData.sleepComparison,
+                        containerColor = SleepColors.containerColor(),
+                        contentColor = SleepColors.contentColor(),
                         onClick = {
                             navController.navigate(
                                 Screen.Historical.createRoute(
@@ -187,6 +192,8 @@ fun CurrentScreen(
                         unit = "kcal",
                         icon = Icons.Filled.LocalFireDepartment,
                         comparison = healthData.caloriesComparison,
+                        containerColor = ActivityColors.containerColor(),
+                        contentColor = ActivityColors.contentColor(),
                         onClick = {
                             navController.navigate(
                                 Screen.Historical.createRoute(
@@ -213,6 +220,8 @@ fun CurrentScreen(
                                 "Max: ${healthData.bloodPressure.dailyMax?.toInt() ?: "--"}"
                             } else null,
                             comparison = healthData.bloodPressureSystolicComparison,
+                            containerColor = CardiovascularColors.containerColor(),
+                            contentColor = CardiovascularColors.contentColor(),
                             onClick = {
                                 navController.navigate(
                                     Screen.Historical.createRoute(
@@ -239,6 +248,8 @@ fun CurrentScreen(
                                 "Max: ${String.format(Locale.US, "%.0f", healthData.bloodGlucose.dailyMax ?: 0.0)}"
                             } else null,
                             comparison = healthData.bloodGlucoseComparison,
+                            containerColor = MetabolicColors.containerColor(),
+                            contentColor = MetabolicColors.contentColor(),
                             onClick = {
                                 navController.navigate(
                                     Screen.Historical.createRoute(
@@ -265,6 +276,8 @@ fun CurrentScreen(
                                 "Max: ${String.format(Locale.US, "%.1f", healthData.bodyTemperature.dailyMax ?: 0.0)}"
                             } else null,
                             comparison = healthData.bodyTemperatureComparison,
+                            containerColor = MetabolicColors.containerColor(),
+                            contentColor = MetabolicColors.contentColor(),
                             onClick = {
                                 navController.navigate(
                                     Screen.Historical.createRoute(
@@ -291,6 +304,8 @@ fun CurrentScreen(
                                 "Max: ${String.format(Locale.US, "%.0f", healthData.oxygenSaturation.dailyMax ?: 0.0)}"
                             } else null,
                             comparison = healthData.oxygenSaturationComparison,
+                            containerColor = RespiratoryColors.containerColor(),
+                            contentColor = RespiratoryColors.contentColor(),
                             onClick = {
                                 navController.navigate(
                                     Screen.Historical.createRoute(
@@ -317,6 +332,8 @@ fun CurrentScreen(
                                 "Max: ${healthData.restingHeartRate.dailyMax?.toInt() ?: "--"}"
                             } else null,
                             comparison = healthData.restingHeartRateComparison,
+                            containerColor = CardiovascularColors.containerColor(),
+                            contentColor = CardiovascularColors.contentColor(),
                             onClick = {
                                 navController.navigate(
                                     Screen.Historical.createRoute(
@@ -343,6 +360,8 @@ fun CurrentScreen(
                                 "Max: ${String.format(Locale.US, "%.0f", healthData.respiratoryRate.dailyMax ?: 0.0)}"
                             } else null,
                             comparison = healthData.respiratoryRateComparison,
+                            containerColor = RespiratoryColors.containerColor(),
+                            contentColor = RespiratoryColors.contentColor(),
                             onClick = {
                                 navController.navigate(
                                     Screen.Historical.createRoute(
@@ -362,6 +381,8 @@ fun CurrentScreen(
                         value = String.format(Locale.US, "%.2f", healthData.distance / 1000),
                         unit = "km",
                         icon = Icons.Filled.Place,
+                        containerColor = ActivityColors.containerColor(),
+                        contentColor = ActivityColors.contentColor(),
                         onClick = {
                             navController.navigate(
                                 Screen.Historical.createRoute(
@@ -380,6 +401,8 @@ fun CurrentScreen(
                         value = "${healthData.exerciseSessions}",
                         unit = if (healthData.exerciseSessions == 1) "session" else "sessions",
                         icon = Icons.Filled.FitnessCenter,
+                        containerColor = ActivityColors.containerColor(),
+                        contentColor = ActivityColors.contentColor(),
                         onClick = {
                             navController.navigate(
                                 Screen.Historical.createRoute(
@@ -601,12 +624,14 @@ fun VitalsMetricCard(
     modifier: Modifier = Modifier,
     dailyStats: String? = null,
     comparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
+    containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceVariant,
+    contentColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
     onClick: (() -> Unit)? = null
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = containerColor
         ),
         onClick = onClick ?: {}
     ) {
@@ -623,13 +648,13 @@ fun VitalsMetricCard(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = contentColor,
                         modifier = Modifier.size(24.dp)
                     )
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = contentColor
                     )
                 }
                 
@@ -642,12 +667,12 @@ fun VitalsMetricCard(
                     Text(
                         text = value,
                         style = MaterialTheme.typography.displaySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = contentColor
                     )
                     Text(
                         text = unit,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        color = contentColor.copy(alpha = 0.7f),
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
                 }
@@ -660,7 +685,7 @@ fun VitalsMetricCard(
                     Text(
                         text = "Measured at $timeStr",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        color = contentColor.copy(alpha = 0.7f)
                     )
                 }
                 
@@ -689,18 +714,18 @@ fun VitalsMetricCard(
                     Text(
                         text = comp.label,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        color = contentColor.copy(alpha = 0.6f)
                     )
                     Text(
                         text = "${comp.value} ${comp.unit}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        color = contentColor.copy(alpha = 0.8f)
                     )
                     comp.difference?.let { diff ->
                         val diffColor = when (comp.isPositive) {
                             true -> MaterialTheme.colorScheme.tertiary
                             false -> MaterialTheme.colorScheme.error
-                            null -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            null -> contentColor.copy(alpha = 0.6f)
                         }
                         Text(
                             text = "${diff} (${comp.percentage})",
