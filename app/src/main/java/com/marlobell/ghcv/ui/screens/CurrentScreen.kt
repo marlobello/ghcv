@@ -24,6 +24,7 @@ import com.marlobell.ghcv.ui.model.MetricCardIds
 import com.marlobell.ghcv.ui.navigation.Screen
 import com.marlobell.ghcv.ui.theme.*
 import com.marlobell.ghcv.ui.viewmodel.CurrentViewModel
+import com.marlobell.ghcv.util.DataSourceFormatter
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -123,6 +124,7 @@ fun CurrentScreen(
                         title = "Steps",
                         value = "${healthData.steps}",
                         icon = Icons.AutoMirrored.Filled.DirectionsWalk,
+                        subtitle = healthData.stepsSource?.let { "from ${DataSourceFormatter.format(it)}" },
                         comparison = healthData.stepsComparison,
                         containerColor = ActivityColors.containerColor(),
                         contentColor = ActivityColors.contentColor(),
@@ -142,12 +144,20 @@ fun CurrentScreen(
                     val timeStr = healthData.heartRateTimestamp?.atZone(ZoneId.systemDefault())
                         ?.format(timeFormatter) ?: ""
                     
+                    val subtitle = buildString {
+                        if (timeStr.isNotEmpty()) append("at $timeStr")
+                        healthData.heartRateSource?.let {
+                            if (isNotEmpty()) append(" • ")
+                            append("from ${DataSourceFormatter.format(it)}")
+                        }
+                    }.takeIf { it.isNotEmpty() }
+                    
                     HealthMetricCard(
                         title = "Heart Rate",
                         value = "$hr",
                         unit = "bpm",
                         icon = Icons.Filled.Favorite,
-                        subtitle = if (timeStr.isNotEmpty()) "Measured at $timeStr" else null,
+                        subtitle = subtitle,
                         comparison = healthData.heartRateComparison,
                         containerColor = CardiovascularColors.containerColor(),
                         contentColor = CardiovascularColors.contentColor(),
@@ -166,11 +176,15 @@ fun CurrentScreen(
                     val hours = sleepMinutes / 60
                     val minutes = sleepMinutes % 60
                     
+                    val subtitle = healthData.sleepSource?.let { 
+                        "from ${DataSourceFormatter.format(it)}" 
+                    }
+                    
                     HealthMetricCard(
                         title = "Sleep Last Night",
                         value = "${hours}h ${minutes}m",
                         icon = Icons.Filled.Bedtime,
-                        subtitle = "Total sleep duration",
+                        subtitle = subtitle,
                         comparison = healthData.sleepComparison,
                         containerColor = SleepColors.containerColor(),
                         contentColor = SleepColors.contentColor(),
@@ -191,6 +205,7 @@ fun CurrentScreen(
                         value = String.format(Locale.US, "%.0f", healthData.activeCalories),
                         unit = "kcal",
                         icon = Icons.Filled.LocalFireDepartment,
+                        subtitle = healthData.activeCaloriesSource?.let { "from ${DataSourceFormatter.format(it)}" },
                         comparison = healthData.caloriesComparison,
                         containerColor = ActivityColors.containerColor(),
                         contentColor = ActivityColors.contentColor(),
@@ -214,6 +229,7 @@ fun CurrentScreen(
                             unit = "mmHg",
                             icon = Icons.Filled.Favorite,
                             timestamp = healthData.bloodPressure.latestTimestamp,
+                            source = healthData.bloodPressureSource,
                             dailyStats = if (healthData.bloodPressure.readingCount > 1) {
                                 "Avg: ${healthData.bloodPressure.dailyAvg?.toInt() ?: "--"} | " +
                                 "Min: ${healthData.bloodPressure.dailyMin?.toInt() ?: "--"} | " +
@@ -242,6 +258,7 @@ fun CurrentScreen(
                             unit = "mg/dL",
                             icon = Icons.Filled.Bloodtype,
                             timestamp = healthData.bloodGlucose.latestTimestamp,
+                            source = healthData.bloodGlucoseSource,
                             dailyStats = if (healthData.bloodGlucose.readingCount > 1) {
                                 "Avg: ${String.format(Locale.US, "%.0f", healthData.bloodGlucose.dailyAvg ?: 0.0)} | " +
                                 "Min: ${String.format(Locale.US, "%.0f", healthData.bloodGlucose.dailyMin ?: 0.0)} | " +
@@ -270,6 +287,7 @@ fun CurrentScreen(
                             unit = "°C",
                             icon = Icons.Filled.Thermostat,
                             timestamp = healthData.bodyTemperature.latestTimestamp,
+                            source = healthData.bodyTemperatureSource,
                             dailyStats = if (healthData.bodyTemperature.readingCount > 1) {
                                 "Avg: ${String.format(Locale.US, "%.1f", healthData.bodyTemperature.dailyAvg ?: 0.0)} | " +
                                 "Min: ${String.format(Locale.US, "%.1f", healthData.bodyTemperature.dailyMin ?: 0.0)} | " +
@@ -298,6 +316,7 @@ fun CurrentScreen(
                             unit = "%",
                             icon = Icons.Filled.Air,
                             timestamp = healthData.oxygenSaturation.latestTimestamp,
+                            source = healthData.oxygenSaturationSource,
                             dailyStats = if (healthData.oxygenSaturation.readingCount > 1) {
                                 "Avg: ${String.format(Locale.US, "%.0f", healthData.oxygenSaturation.dailyAvg ?: 0.0)} | " +
                                 "Min: ${String.format(Locale.US, "%.0f", healthData.oxygenSaturation.dailyMin ?: 0.0)} | " +
@@ -326,6 +345,7 @@ fun CurrentScreen(
                             unit = "bpm",
                             icon = Icons.Filled.MonitorHeart,
                             timestamp = healthData.restingHeartRate.latestTimestamp,
+                            source = healthData.restingHeartRateSource,
                             dailyStats = if (healthData.restingHeartRate.readingCount > 1) {
                                 "Avg: ${healthData.restingHeartRate.dailyAvg?.toInt() ?: "--"} | " +
                                 "Min: ${healthData.restingHeartRate.dailyMin?.toInt() ?: "--"} | " +
@@ -354,6 +374,7 @@ fun CurrentScreen(
                             unit = "breaths/min",
                             icon = Icons.Filled.Air,
                             timestamp = healthData.respiratoryRate.latestTimestamp,
+                            source = healthData.respiratoryRateSource,
                             dailyStats = if (healthData.respiratoryRate.readingCount > 1) {
                                 "Avg: ${String.format(Locale.US, "%.0f", healthData.respiratoryRate.dailyAvg ?: 0.0)} | " +
                                 "Min: ${String.format(Locale.US, "%.0f", healthData.respiratoryRate.dailyMin ?: 0.0)} | " +
@@ -622,6 +643,7 @@ fun VitalsMetricCard(
     icon: ImageVector,
     timestamp: Instant?,
     modifier: Modifier = Modifier,
+    source: String? = null,
     dailyStats: String? = null,
     comparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
     containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceVariant,
@@ -681,9 +703,24 @@ fun VitalsMetricCard(
                     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
                     val timeStr = it.atZone(ZoneId.systemDefault()).format(timeFormatter)
                     
+                    val subtitle = buildString {
+                        append("at $timeStr")
+                        source?.let {
+                            append(" • from ${DataSourceFormatter.format(it)}")
+                        }
+                    }
+                    
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Measured at $timeStr",
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = contentColor.copy(alpha = 0.7f)
+                    )
+                } ?: source?.let {
+                    // If no timestamp but have source, show just the source
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "from ${DataSourceFormatter.format(it)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = contentColor.copy(alpha = 0.7f)
                     )
