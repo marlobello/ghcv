@@ -84,7 +84,7 @@ class TrendsViewModel(
                 val sleepTrend = mutableListOf<Pair<LocalDate, Long>>()
                 for (i in 0 until period.days) {
                     val date = LocalDate.now().minusDays(i.toLong())
-                    val sleep = repository.getSleepForDate(date)
+                    val (sleep, _) = repository.getSleepForDate(date)
                     if (sleep != null) {
                         sleepTrend.add(date to sleep.durationMinutes)
                     }

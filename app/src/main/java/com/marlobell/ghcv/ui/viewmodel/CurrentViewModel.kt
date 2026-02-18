@@ -31,13 +31,19 @@ import kotlin.reflect.KClass
 
 data class CurrentHealthData(
     val steps: Long = 0,
+    val stepsSource: String? = null,
     val heartRate: Long? = null,
+    val heartRateSource: String? = null,
     val heartRateTimestamp: Instant? = null,
     val todayAvgHeartRate: Long? = null,
     val activeCalories: Double = 0.0,
+    val activeCaloriesSource: String? = null,
     val sleepLastNight: Long? = null,
+    val sleepSource: String? = null,
     val distance: Double = 0.0,
+    val distanceSource: String? = null,
     val exerciseSessions: Int = 0,
+    val exerciseSource: String? = null,
     val sevenDayAvgSteps: Long = 0,
     val sevenDayAvgSleep: Long = 0,
     val sevenDayAvgCalories: Double = 0.0,
@@ -50,11 +56,17 @@ data class CurrentHealthData(
     val sevenDayAvgRestingHeartRate: Long? = null,
     val sevenDayAvgRespiratoryRate: Double? = null,
     val bloodPressure: VitalStats<BloodPressureMetric> = VitalStats(),
+    val bloodPressureSource: String? = null,
     val bloodGlucose: VitalStats<Double> = VitalStats(),
+    val bloodGlucoseSource: String? = null,
     val bodyTemperature: VitalStats<Double> = VitalStats(),
+    val bodyTemperatureSource: String? = null,
     val oxygenSaturation: VitalStats<Double> = VitalStats(),
+    val oxygenSaturationSource: String? = null,
     val restingHeartRate: VitalStats<Long> = VitalStats(),
+    val restingHeartRateSource: String? = null,
     val respiratoryRate: VitalStats<Double> = VitalStats(),
+    val respiratoryRateSource: String? = null,
     val lastUpdated: Instant? = null,
     // Categorized metrics for UI sections
     val metricsWithData: List<MetricInfo> = emptyList(),
@@ -226,19 +238,19 @@ class CurrentViewModel(
             _uiState.value = UiState.Loading
             
             tryWithPermissionsCheck {
-                // Fetch main metrics with individual error handling
-                val steps = try {
+                // Fetch main metrics with individual error handling and data sources
+                val (steps, stepsSource) = try {
                     repository.getTodaySteps()
                 } catch (e: Exception) {
                     Log.w("CurrentViewModel", "Failed to fetch steps", e)
-                    0L
+                    Pair(0L, null)
                 }
                 
-                val heartRate = try {
+                val (heartRate, heartRateSource) = try {
                     repository.getLatestHeartRate()
                 } catch (e: Exception) {
                     Log.w("CurrentViewModel", "Failed to fetch heart rate", e)
-                    null
+                    Pair(null, null)
                 }
                 
                 // Calculate today's average resting heart rate (or fall back to regular HR average)
@@ -261,10 +273,11 @@ class CurrentViewModel(
                     null
                 }
                 
-                val calories = try {
+                val (calories, caloriesSource) = try {
                     repository.getTodayActiveCalories()
                 } catch (e: Exception) {
-                    0.0
+                    Log.w("CurrentViewModel", "Failed to fetch active calories", e)
+                    Pair(0.0, null)
                 }
                 
                 val distance = try {
@@ -327,10 +340,10 @@ class CurrentViewModel(
                 
                 // Sleep from last night (yesterday's date)
                 val yesterday = LocalDate.now().minusDays(1)
-                val sleepData = try {
+                val (sleepData, sleepSource) = try {
                     repository.getSleepForDate(yesterday)
                 } catch (e: Exception) {
-                    null
+                    Pair(null, null)
                 }
 
                 // Fetch all vitals with individual error handling
@@ -544,11 +557,15 @@ class CurrentViewModel(
 
                 _healthData.value = CurrentHealthData(
                     steps = steps,
+                    stepsSource = stepsSource,
                     heartRate = heartRate?.bpm,
+                    heartRateSource = heartRateSource,
                     heartRateTimestamp = heartRate?.timestamp,
                     todayAvgHeartRate = todayAvgHeartRate,
                     activeCalories = calories,
+                    activeCaloriesSource = caloriesSource,
                     sleepLastNight = sleepData?.durationMinutes,
+                    sleepSource = sleepSource,
                     distance = distance,
                     exerciseSessions = exerciseSessions,
                     sevenDayAvgSteps = sevenDayAvgSteps,
