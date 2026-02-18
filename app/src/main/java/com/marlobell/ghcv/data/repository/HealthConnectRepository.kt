@@ -53,10 +53,13 @@ class HealthConnectRepository(
     private fun getTimeRangeForDate(date: LocalDate): TimeRangeFilter {
         val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant()
         val endOfDay = if (date == LocalDate.now()) {
+            android.util.Log.d("HealthConnect", "Date is today, using Instant.now() as end time")
             Instant.now()
         } else {
+            android.util.Log.d("HealthConnect", "Date is in past, using midnight+1 as end time")
             startOfDay.plus(1, ChronoUnit.DAYS)
         }
+        android.util.Log.d("HealthConnect", "Time range: $startOfDay to $endOfDay")
         return TimeRangeFilter.between(startOfDay, endOfDay)
     }
 
@@ -203,6 +206,9 @@ class HealthConnectRepository(
     suspend fun getHeartRateForDate(date: LocalDate): List<HeartRateMetric> {
         val timeRange = getTimeRangeForDate(date)
 
+        android.util.Log.d("HealthConnect", "Fetching heart rate for date: $date")
+        android.util.Log.d("HealthConnect", "Time range: ${timeRange.startTime} to ${timeRange.endTime}")
+
         val response = healthConnectClient.readRecords(
             ReadRecordsRequest(
                 recordType = HeartRateRecord::class,
@@ -210,7 +216,10 @@ class HealthConnectRepository(
             )
         )
 
-        return response.records.flatMap { record ->
+        android.util.Log.d("HealthConnect", "Found ${response.records.size} heart rate records")
+        
+        val metrics = response.records.flatMap { record ->
+            android.util.Log.d("HealthConnect", "Record from ${record.startTime} to ${record.endTime} with ${record.samples.size} samples")
             record.samples.map { sample ->
                 HeartRateMetric(
                     timestamp = sample.time,
@@ -218,6 +227,9 @@ class HealthConnectRepository(
                 )
             }
         }
+        
+        android.util.Log.d("HealthConnect", "Returning ${metrics.size} heart rate metrics")
+        return metrics
     }
 
     suspend fun getAverageHeartRateForDate(date: LocalDate): Double? {
