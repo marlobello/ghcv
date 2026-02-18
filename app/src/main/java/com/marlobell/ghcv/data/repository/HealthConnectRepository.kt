@@ -787,7 +787,7 @@ class HealthConnectRepository(
         }
     }
 
-    suspend fun getTodayRestingHeartRate(): List<RestingHeartRateMetric> {
+    suspend fun getTodayRestingHeartRate(): Pair<List<RestingHeartRateMetric>, String?> {
         val timeRange = getTimeRangeForToday()
 
         val response = healthConnectClient.readRecords(
@@ -797,12 +797,17 @@ class HealthConnectRepository(
             )
         )
 
-        return response.records.map {
+        val metrics = response.records.map {
             RestingHeartRateMetric(
                 timestamp = it.time,
                 bpm = it.beatsPerMinute
             )
         }
+        
+        // Get source from first record if available
+        val source = response.records.firstOrNull()?.metadata?.dataOrigin?.packageName
+        
+        return Pair(metrics, source)
     }
 
     suspend fun getLatestRespiratoryRate(): RespiratoryRateMetric? {

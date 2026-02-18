@@ -255,7 +255,7 @@ class CurrentViewModel(
                 
                 // Calculate today's average resting heart rate (or fall back to regular HR average)
                 val todayAvgHeartRate = try {
-                    val restingHRToday = repository.getTodayRestingHeartRate()
+                    val (restingHRToday, _) = repository.getTodayRestingHeartRate()
                     if (restingHRToday.isNotEmpty()) {
                         val avg = (restingHRToday.map { it.bpm.toDouble() }.average()).toLong()
                         Log.d("CurrentViewModel", "Resting HR avg from ${restingHRToday.size} samples: $avg bpm")
@@ -385,9 +385,10 @@ class CurrentViewModel(
                 
                 // Note: These vitals may trigger rate limiting if queried too frequently
                 // Using try-catch with proper exception handling
+                val (restingHeartRateList, restingHeartRateSource) = repository.getTodayRestingHeartRate()
                 val restingHeartRateStats = buildVitalStats(
                     latestMetric = repository.getLatestRestingHeartRate(),
-                    todayReadings = repository.getTodayRestingHeartRate(),
+                    todayReadings = restingHeartRateList,
                     valueExtractor = { it.bpm.toDouble() },
                     latestValueExtractor = { it.bpm },
                     latestTimestampExtractor = { it.timestamp },
@@ -583,6 +584,7 @@ class CurrentViewModel(
                     bodyTemperature = bodyTemperatureStats,
                     oxygenSaturation = oxygenSaturationStats,
                     restingHeartRate = restingHeartRateStats,
+                    restingHeartRateSource = restingHeartRateSource,
                     respiratoryRate = respiratoryRateStats,
                     lastUpdated = Instant.now(),
                     // Comparisons
