@@ -3,14 +3,18 @@ package com.marlobell.ghcv.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.marlobell.ghcv.data.HealthConnectManager
+import com.marlobell.ghcv.data.model.SleepMetric
 import com.marlobell.ghcv.data.repository.HealthConnectRepository
 import com.marlobell.ghcv.ui.viewmodel.TrendPeriod
 import com.marlobell.ghcv.ui.viewmodel.TrendsViewModel
@@ -20,10 +24,16 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStartAxis
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
+import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
+import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
 import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
+import com.patrykandpatrick.vico.core.cartesian.layer.ColumnCartesianLayer
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 @Composable
 fun TrendsScreen(
@@ -229,7 +239,7 @@ fun HeartRateTrendCard(
 
 @Composable
 fun SleepTrendCard(
-    data: List<Pair<LocalDate, Long>>,
+    data: List<Pair<LocalDate, SleepMetric?>>,
     avgSleep: Long,
     totalSleep: Long
 ) {
@@ -240,20 +250,18 @@ fun SleepTrendCard(
                 style = MaterialTheme.typography.titleLarge
             )
             Spacer(modifier = Modifier.height(16.dp))
-            
-            SleepChart(
+
+            SleepStagesChart(
                 data = data,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(250.dp)
+                modifier = Modifier.fillMaxWidth()
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             val avgHours = avgSleep / 60
             val avgMinutes = avgSleep % 60
             val totalHours = totalSleep / 60
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -271,21 +279,28 @@ fun StepsChart(
     modifier: Modifier = Modifier
 ) {
     val modelProducer = remember { CartesianChartModelProducer() }
-    
+
     LaunchedEffect(data) {
         val xValues = data.indices.map { it.toFloat() }
         val yValues = data.map { it.second.toFloat() }
-        
         modelProducer.runTransaction {
             columnSeries { series(xValues, yValues) }
         }
     }
-    
+
+    val dateFormatter = rememberDateFormatter(data.size)
+    val labelSpacing = rememberLabelSpacing(data.size)
+
     CartesianChartHost(
         chart = rememberCartesianChart(
             rememberColumnCartesianLayer(),
             startAxis = rememberStartAxis(),
-            bottomAxis = rememberBottomAxis()
+            bottomAxis = rememberBottomAxis(
+                valueFormatter = CartesianValueFormatter { value, _, _ ->
+                    data.getOrNull(value.toInt())?.first?.format(dateFormatter) ?: ""
+                },
+                itemPlacer = HorizontalAxis.ItemPlacer.default(spacing = labelSpacing)
+            )
         ),
         modelProducer = modelProducer,
         modifier = modifier
@@ -298,21 +313,28 @@ fun HeartRateTrendChart(
     modifier: Modifier = Modifier
 ) {
     val modelProducer = remember { CartesianChartModelProducer() }
-    
+
     LaunchedEffect(data) {
         val xValues = data.indices.map { it.toFloat() }
         val yValues = data.map { it.second.toFloat() }
-        
         modelProducer.runTransaction {
             lineSeries { series(xValues, yValues) }
         }
     }
-    
+
+    val dateFormatter = rememberDateFormatter(data.size)
+    val labelSpacing = rememberLabelSpacing(data.size)
+
     CartesianChartHost(
         chart = rememberCartesianChart(
             rememberLineCartesianLayer(),
             startAxis = rememberStartAxis(),
-            bottomAxis = rememberBottomAxis()
+            bottomAxis = rememberBottomAxis(
+                valueFormatter = CartesianValueFormatter { value, _, _ ->
+                    data.getOrNull(value.toInt())?.first?.format(dateFormatter) ?: ""
+                },
+                itemPlacer = HorizontalAxis.ItemPlacer.default(spacing = labelSpacing)
+            )
         ),
         modelProducer = modelProducer,
         modifier = modifier
@@ -320,30 +342,124 @@ fun HeartRateTrendChart(
 }
 
 @Composable
-fun SleepChart(
-    data: List<Pair<LocalDate, Long>>,
+fun SleepStagesChart(
+    data: List<Pair<LocalDate, SleepMetric?>>,
     modifier: Modifier = Modifier
 ) {
     val modelProducer = remember { CartesianChartModelProducer() }
-    
+
     LaunchedEffect(data) {
+        if (data.isEmpty()) return@LaunchedEffect
+
         val xValues = data.indices.map { it.toFloat() }
-        val yValues = data.map { (it.second / 60).toFloat() } // Convert to hours
-        
+
+        // Minutes per stage per night — falls back to total duration when no stage data
+        fun stageMinutes(index: Int, vararg stageCodes: String): Float {
+            val metric = data[index].second ?: return 0f
+            return if (metric.stages.isEmpty()) 0f
+            else metric.stages
+                .filter { it.stage in stageCodes }
+                .sumOf { ChronoUnit.MINUTES.between(it.startTime, it.endTime) }
+                .toFloat()
+        }
+        fun unknownMinutes(index: Int): Float {
+            val metric = data[index].second ?: return 0f
+            return if (metric.stages.isEmpty()) (metric.durationMinutes).toFloat() else 0f
+        }
+
+        val awake   = xValues.map { stageMinutes(it.toInt(), "1") }
+        val light   = xValues.map { stageMinutes(it.toInt(), "4", "2", "3") }
+        val deep    = xValues.map { stageMinutes(it.toInt(), "5") }
+        val rem     = xValues.map { stageMinutes(it.toInt(), "6") }
+        val unknown = xValues.map { unknownMinutes(it.toInt()) }
+
         modelProducer.runTransaction {
-            columnSeries { series(xValues, yValues) }
+            columnSeries {
+                series(xValues, awake)
+                series(xValues, light)
+                series(xValues, deep)
+                series(xValues, rem)
+                series(xValues, unknown)
+            }
         }
     }
-    
-    CartesianChartHost(
-        chart = rememberCartesianChart(
-            rememberColumnCartesianLayer(),
-            startAxis = rememberStartAxis(),
-            bottomAxis = rememberBottomAxis()
-        ),
-        modelProducer = modelProducer,
-        modifier = modifier
-    )
+
+    val awakeCol   = rememberLineComponent(color = Color(0xFFE57373))
+    val lightCol   = rememberLineComponent(color = Color(0xFF64B5F6))
+    val deepCol    = rememberLineComponent(color = Color(0xFF1565C0))
+    val remCol     = rememberLineComponent(color = Color(0xFF9575CD))
+    val unknownCol = rememberLineComponent(color = Color(0xFFB0BEC5))
+
+    val dateFormatter = rememberDateFormatter(data.size)
+    val labelSpacing  = rememberLabelSpacing(data.size)
+
+    Column(modifier = modifier) {
+        CartesianChartHost(
+            chart = rememberCartesianChart(
+                rememberColumnCartesianLayer(
+                    columnProvider = ColumnCartesianLayer.ColumnProvider.series(
+                        awakeCol, lightCol, deepCol, remCol, unknownCol
+                    ),
+                    mergeMode = { ColumnCartesianLayer.MergeMode.Stacked }
+                ),
+                startAxis = rememberStartAxis(),
+                bottomAxis = rememberBottomAxis(
+                    valueFormatter = CartesianValueFormatter { value, _, _ ->
+                        data.getOrNull(value.toInt())?.first?.format(dateFormatter) ?: ""
+                    },
+                    itemPlacer = HorizontalAxis.ItemPlacer.default(spacing = labelSpacing)
+                )
+            ),
+            modelProducer = modelProducer,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Legend
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+        ) {
+            SleepStageLegendItem(Color(0xFFE57373), "Awake")
+            SleepStageLegendItem(Color(0xFF64B5F6), "Light")
+            SleepStageLegendItem(Color(0xFF1565C0), "Deep")
+            SleepStageLegendItem(Color(0xFF9575CD), "REM")
+        }
+    }
+}
+
+@Composable
+private fun SleepStageLegendItem(color: Color, label: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(color = color, shape = CircleShape)
+        )
+        Text(text = label, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
+private fun rememberDateFormatter(dataSize: Int): DateTimeFormatter {
+    return remember(dataSize) {
+        if (dataSize <= 14) DateTimeFormatter.ofPattern("EEE")
+        else DateTimeFormatter.ofPattern("MMM d")
+    }
+}
+
+private fun rememberLabelSpacing(dataSize: Int): Int {
+    return when {
+        dataSize <= 14 -> 1
+        dataSize <= 31 -> 5
+        else -> 14
+    }
 }
 
 @Composable

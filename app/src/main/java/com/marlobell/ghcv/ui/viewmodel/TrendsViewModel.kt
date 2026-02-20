@@ -2,6 +2,7 @@ package com.marlobell.ghcv.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.marlobell.ghcv.data.model.SleepMetric
 import com.marlobell.ghcv.data.repository.HealthConnectRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +21,7 @@ enum class TrendPeriod(val days: Int, val label: String) {
 data class TrendData(
     val stepsTrend: List<Pair<LocalDate, Long>> = emptyList(),
     val heartRateTrend: List<Pair<LocalDate, Double>> = emptyList(),
-    val sleepTrend: List<Pair<LocalDate, Long>> = emptyList(),
+    val sleepTrend: List<Pair<LocalDate, SleepMetric?>> = emptyList(),
     val period: TrendPeriod = TrendPeriod.WEEK,
     val isLoading: Boolean = true,
     val error: String? = null,
@@ -44,9 +45,11 @@ data class TrendData(
     
     // Statistics for sleep
     val avgSleep: Long
-        get() = if (sleepTrend.isNotEmpty()) sleepTrend.map { it.second }.average().toLong() else 0
+        get() = if (sleepTrend.isNotEmpty())
+            sleepTrend.map { it.second?.durationMinutes ?: 0L }.average().toLong()
+        else 0
     val totalSleep: Long
-        get() = sleepTrend.sumOf { it.second }
+        get() = sleepTrend.sumOf { it.second?.durationMinutes ?: 0L }
 }
 
 class TrendsViewModel(
@@ -81,13 +84,13 @@ class TrendsViewModel(
                     }
                 }
                 
-                // Get sleep trends (duration per night)
-                val sleepTrend = mutableListOf<Pair<LocalDate, Long>>()
+                // Get sleep trends (duration per night, with full stage data)
+                val sleepTrend = mutableListOf<Pair<LocalDate, SleepMetric?>>()
                 for (i in 0 until period.days) {
                     val date = LocalDate.now().minusDays(i.toLong())
                     val (sleep, _) = repository.getSleepForDate(date)
                     if (sleep != null) {
-                        sleepTrend.add(date to sleep.durationMinutes)
+                        sleepTrend.add(date to sleep)
                     }
                 }
 
