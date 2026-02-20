@@ -6,6 +6,7 @@ import com.marlobell.ghcv.data.repository.HealthConnectRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -60,7 +61,7 @@ class TrendsViewModel(
     }
 
     fun loadTrends(period: TrendPeriod) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(
                 period = period,
                 isLoading = true,

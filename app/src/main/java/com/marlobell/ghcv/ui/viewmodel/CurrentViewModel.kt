@@ -17,6 +17,7 @@ import com.marlobell.ghcv.ui.UiState
 import androidx.health.connect.client.changes.Change
 import androidx.health.connect.client.records.*
 import com.marlobell.ghcv.ui.model.MetricInfo
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -103,7 +104,8 @@ data class CurrentHealthData(
 
 class CurrentViewModel(
     private val repository: HealthConnectRepository,
-    private val healthConnectManager: HealthConnectManager
+    private val healthConnectManager: HealthConnectManager,
+    private val changesTokenStorage: ChangesTokenStorage
 ) : ViewModel() {
 
     private val _healthData = MutableStateFlow(CurrentHealthData())
@@ -121,8 +123,6 @@ class CurrentViewModel(
     private var autoRefreshJob: Job? = null
     private var isInForeground = true
     
-    // Changes API support
-    private lateinit var changesTokenStorage: ChangesTokenStorage
     private var isInitialLoad = true
     
     // Record types we track for changes
@@ -139,20 +139,14 @@ class CurrentViewModel(
         RespiratoryRateRecord::class
     )
 
-    fun initialize(changesTokenStorage: ChangesTokenStorage) {
-        this.changesTokenStorage = changesTokenStorage
-    }
-
     init {
         checkPermissions()
     }
 
     fun checkPermissions() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _hasPermissions.value = healthConnectManager.hasAllPermissions()
             _hasBackgroundPermission.value = healthConnectManager.hasBackgroundReadPermission()
-            
-            Log.d("CurrentViewModel", "Permissions: all=${_hasPermissions.value}, background=${_hasBackgroundPermission.value}")
             
             if (_hasPermissions.value) {
                 loadCurrentData()
@@ -182,12 +176,12 @@ class CurrentViewModel(
         }
         
         autoRefreshJob?.cancel()
-        autoRefreshJob = viewModelScope.launch {
+        autoRefreshJob = viewModelScope.launch(Dispatchers.IO) {
             while (isInForeground || _hasBackgroundPermission.value) {
                 delay(300_000) // 5 minutes
                 if (isInForeground || _hasBackgroundPermission.value) {
                     // Use differential sync for auto-refresh after initial load
-                    if (::changesTokenStorage.isInitialized && !isInitialLoad) {
+                    if (!isInitialLoad) {
                         syncChanges()
                     } else {
                         loadCurrentData()
@@ -234,7 +228,7 @@ class CurrentViewModel(
     }
 
     fun loadCurrentData() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = UiState.Loading
             
             tryWithPermissionsCheck {
@@ -258,7 +252,6 @@ class CurrentViewModel(
                     val (restingHRToday, _) = repository.getTodayRestingHeartRate()
                     if (restingHRToday.isNotEmpty()) {
                         val avg = (restingHRToday.map { it.bpm.toDouble() }.average()).toLong()
-                        Log.d("CurrentViewModel", "Resting HR avg from ${restingHRToday.size} samples: $avg bpm")
                         avg
                     } else {
                         // Fallback: use regular heart rate samples
@@ -618,7 +611,7 @@ class CurrentViewModel(
                 categorizeMetrics(_healthData.value)
                 
                 // On initial load, get a changes token for future differential syncs
-                if (isInitialLoad && ::changesTokenStorage.isInitialized) {
+                if (isInitialLoad) {
                     try {
                         val token = healthConnectManager.getChangesToken(trackedRecordTypes)
                         changesTokenStorage.saveToken("current_data", token)
@@ -679,12 +672,6 @@ class CurrentViewModel(
      * Falls back to full refresh if token is expired or unavailable.
      */
     private suspend fun syncChanges() {
-        if (!::changesTokenStorage.isInitialized) {
-            Log.w("CurrentViewModel", "ChangesTokenStorage not initialized, falling back to full refresh")
-            loadCurrentData()
-            return
-        }
-
         val token = changesTokenStorage.getToken("current_data")
         if (token == null) {
             Log.d("CurrentViewModel", "No changes token available, performing full refresh")
@@ -692,19 +679,21 @@ class CurrentViewModel(
             return
         }
 
+        var needsFullRefresh = false
+
         tryWithPermissionsCheck {
             Log.d("CurrentViewModel", "Starting differential sync with changes token")
             var hasChanges = false
-            
+
             healthConnectManager.getChanges(token)
                 .catch { e ->
                     when (e) {
                         is IOException -> {
-                            // Token expired - clear it and do full refresh
+                            // Token expired - clear it and schedule full refresh
                             Log.w("CurrentViewModel", "Changes token expired, clearing and doing full refresh")
                             changesTokenStorage.clearToken("current_data")
                             isInitialLoad = true
-                            loadCurrentData()
+                            needsFullRefresh = true
                         }
                         is SecurityException -> {
                             // App is in background without background permission
@@ -729,10 +718,9 @@ class CurrentViewModel(
                         is ChangesMessage.NoMoreChanges -> {
                             Log.d("CurrentViewModel", "No more changes, storing new token")
                             changesTokenStorage.saveToken("current_data", message.nextChangesToken)
-                            
+
                             if (hasChanges) {
-                                // If we got changes, refresh the affected data
-                                loadCurrentData()
+                                needsFullRefresh = true
                             } else {
                                 // No changes, just update timestamp
                                 _healthData.value = _healthData.value.copy(lastUpdated = Instant.now())
@@ -742,6 +730,10 @@ class CurrentViewModel(
                     }
                 }
         }
+
+        if (needsFullRefresh) {
+            loadCurrentData()
+        }
     }
 
     /**
@@ -749,13 +741,6 @@ class CurrentViewModel(
      * Logs change information for debugging.
      */
     private fun processChanges(changes: List<Change>) {
-        Log.d("CurrentViewModel", "Processing ${changes.size} changes from Health Connect")
-        
-        // Log summary of changes
-        changes.forEach { change ->
-            Log.d("CurrentViewModel", "  Change detected: ${change::class.simpleName}")
-        }
-        
         // For now, any changes trigger a full refresh
         // In the future, we could be more granular and only refresh affected metrics
     }
@@ -1028,10 +1013,9 @@ class CurrentViewModel(
     }
 
     fun refresh() {
-        if (::changesTokenStorage.isInitialized && !isInitialLoad) {
+        if (!isInitialLoad) {
             // Use differential sync for subsequent refreshes
-            viewModelScope.launch {
-                syncChanges()
+            viewModelScope.launch(Dispatchers.IO) {
             }
         } else {
             // First load or token storage not available

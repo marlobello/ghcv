@@ -45,9 +45,8 @@ fun SleepStageChart(
     val sleepEnd = sortedStages.last().endTime
     val totalDuration = Duration.between(sleepStart, sleepEnd).toMinutes()
     
-    // Pre-calculate colors outside of Canvas and log stage names for debugging
+    // Pre-calculate colors outside of Canvas
     val stageColors = sortedStages.map { stage ->
-        android.util.Log.d("SleepStageChart", "Stage: ${stage.stage}")
         getStageColor(stage.stage)
     }
     
@@ -172,9 +171,6 @@ private fun formatStageName(stage: String): String {
 }
 
 private fun getStageLevel(stage: String): Int {
-    android.util.Log.d("SleepStageChart", "Getting level for stage: '$stage'")
-    // Oura Ring order (high to low depth): 1=Awake, 6=REM, 4=Light, 5=Deep
-    // Return values so they render top to bottom in that order
     val level = when (stage) {
         "1" -> -1  // Awake - highest (top)
         "6" -> -2  // REM Sleep
@@ -192,8 +188,6 @@ private fun getStageLevel(stage: String): Int {
 
 @Composable
 private fun getStageColor(stage: String): Color {
-    android.util.Log.d("SleepStageChart", "Getting color for stage: '$stage'")
-    // Use distinct hardcoded colors for better visibility
     val color = when {
         // Check for numeric values (Health Connect sometimes uses numbers)
         stage == "1" -> Color(0xFFE57373) // Awake - Red
@@ -217,6 +211,5 @@ private fun getStageColor(stage: String): Color {
             Color(0xFFB0BEC5) // Gray for unknown
         }
     }
-    android.util.Log.d("SleepStageChart", "Color for '$stage': $color")
     return color
 }

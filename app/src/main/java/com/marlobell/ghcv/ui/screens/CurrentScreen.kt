@@ -52,15 +52,10 @@ fun CurrentScreen(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                 @Suppress("UNCHECKED_CAST")
-                return CurrentViewModel(repository, healthConnectManager) as T
+                return CurrentViewModel(repository, healthConnectManager, changesTokenStorage) as T
             }
         }
     )
-    
-    // Initialize the ViewModel with token storage
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        viewModel.initialize(changesTokenStorage)
-    }
     
     val healthData by viewModel.healthData.collectAsState()
     val uiState by viewModel.uiState.collectAsState()

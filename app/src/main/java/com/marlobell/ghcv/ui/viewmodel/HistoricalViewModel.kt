@@ -14,6 +14,7 @@ import com.marlobell.ghcv.data.repository.HealthConnectRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -58,7 +59,7 @@ class HistoricalViewModel(
     }
 
     fun loadDataForDate(date: LocalDate) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(
                 date = date,
                 isLoading = true,

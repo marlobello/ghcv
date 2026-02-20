@@ -2,4 +2,5 @@
 <backup-rules>
     <include domain="sharedpref" path="."/>
     <exclude domain="sharedpref" path="device.xml"/>
+    <exclude domain="sharedpref" path="health_connect_changes_tokens.xml"/>
 </backup-rules>

@@ -122,7 +122,6 @@ fun HealthConnectApp(
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = healthConnectManager.createPermissionRequestContract()
     ) { granted ->
-        Log.d("GHCV", "Permission launcher result: $granted")
         // After permission request, recheck if all permissions are granted
         // Use LaunchedEffect to check in a coroutine context
         permissionsGranted = null // Trigger recheck
@@ -140,7 +139,6 @@ fun HealthConnectApp(
     when {
         permissionsGranted == null -> {
             // Still checking - splash screen is kept visible, render nothing
-            Log.d("GHCV", "Still checking permissions...")
             // Empty composable - splash screen stays visible due to setKeepOnScreenCondition
         }
         !healthConnectAvailable -> {
@@ -154,7 +152,6 @@ fun HealthConnectApp(
             Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                 PermissionRequestScreen(
                     onRequestPermissions = {
-                        Log.d("GHCV", "Grant Permissions button clicked!")
                         try {
                             permissionLauncher.launch(HealthConnectManager.PERMISSIONS)
                             Log.d("GHCV", "Permission launcher launched successfully")
@@ -237,8 +234,6 @@ fun MainNavigationScreen(healthConnectManager: HealthConnectManager) {
                             } else {
                                 screen.route
                             }
-                            
-                            Log.d("Navigation", "Bottom nav clicked: ${screen.title}, navigating to: $targetRoute, current route: ${currentDestination?.route}")
                             
                             navController.navigate(targetRoute) {
                                 // Clear the back stack to the start destination

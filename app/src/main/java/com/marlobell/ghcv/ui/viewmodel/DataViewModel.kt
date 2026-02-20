@@ -8,6 +8,7 @@ import com.marlobell.ghcv.data.repository.HealthConnectRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.health.connect.client.records.*
 import androidx.health.connect.client.request.ReadRecordsRequest
@@ -33,13 +34,13 @@ class DataViewModel(
     val hasPermissions: StateFlow<Boolean> = _hasPermissions.asStateFlow()
     
     fun checkPermissions() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _hasPermissions.value = healthConnectManager.hasAllPermissions()
         }
     }
     
     fun loadData() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true)
             
             try {
