@@ -31,6 +31,8 @@ import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
 import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import com.patrykandpatrick.vico.core.cartesian.layer.ColumnCartesianLayer
+import com.patrykandpatrick.vico.core.common.Defaults
+import com.patrykandpatrick.vico.core.common.shape.Shape
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -384,11 +386,13 @@ fun SleepStagesChart(
         }
     }
 
-    val awakeCol   = rememberLineComponent(color = Color(0xFFE57373))
-    val lightCol   = rememberLineComponent(color = Color(0xFF64B5F6))
-    val deepCol    = rememberLineComponent(color = Color(0xFF1565C0))
-    val remCol     = rememberLineComponent(color = Color(0xFF9575CD))
-    val unknownCol = rememberLineComponent(color = Color(0xFFB0BEC5))
+    val columnShape = Shape.rounded(Defaults.COLUMN_ROUNDNESS_PERCENT)
+    val columnThickness = Defaults.COLUMN_WIDTH.dp
+    val awakeCol   = rememberLineComponent(color = Color(0xFFE57373), thickness = columnThickness, shape = columnShape)
+    val lightCol   = rememberLineComponent(color = Color(0xFF64B5F6), thickness = columnThickness, shape = columnShape)
+    val deepCol    = rememberLineComponent(color = Color(0xFF1565C0), thickness = columnThickness, shape = columnShape)
+    val remCol     = rememberLineComponent(color = Color(0xFF9575CD), thickness = columnThickness, shape = columnShape)
+    val unknownCol = rememberLineComponent(color = Color(0xFFB0BEC5), thickness = columnThickness, shape = columnShape)
 
     val dateFormatter = rememberDateFormatter(data.size)
     val labelSpacing  = rememberLabelSpacing(data.size)
