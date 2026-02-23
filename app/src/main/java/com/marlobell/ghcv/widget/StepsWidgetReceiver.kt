@@ -7,6 +7,7 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.state.updateAppWidgetState
+import androidx.health.connect.client.records.StepsRecord
 import com.marlobell.ghcv.data.HealthConnectManager
 import com.marlobell.ghcv.data.repository.HealthConnectRepository
 import kotlinx.coroutines.MainScope
@@ -25,8 +26,15 @@ class StepsWidgetReceiver : GlanceAppWidgetReceiver() {
         appWidgetIds: IntArray
     ) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
+        // goAsync() keeps the receiver alive until pendingResult.finish() is called,
+        // preventing Android from killing the process before our Health Connect I/O completes.
+        val pendingResult = goAsync()
         coroutineScope.launch {
-            refreshAllWidgets(context)
+            try {
+                refreshAllWidgets(context)
+            } finally {
+                pendingResult.finish()
+            }
         }
     }
 
@@ -43,7 +51,8 @@ class StepsWidgetReceiver : GlanceAppWidgetReceiver() {
         glanceId: androidx.glance.GlanceId
     ) {
         val healthManager = HealthConnectManager(context)
-        val hasPermission = healthManager.hasAllPermissions()
+        // Only check for the steps permission — not all 12 health permissions.
+        val hasPermission = healthManager.hasPermissionFor(StepsRecord::class)
 
         var currentSteps = 0L
         var sevenDayAvg = 0L
@@ -90,3 +99,4 @@ class StepsWidgetReceiver : GlanceAppWidgetReceiver() {
         glanceAppWidget.update(context, glanceId)
     }
 }
+
