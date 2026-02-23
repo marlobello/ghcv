@@ -26,15 +26,8 @@ class StepsWidgetReceiver : GlanceAppWidgetReceiver() {
         appWidgetIds: IntArray
     ) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
-        // goAsync() keeps the receiver alive until pendingResult.finish() is called,
-        // preventing Android from killing the process before our Health Connect I/O completes.
-        val pendingResult = goAsync()
         coroutineScope.launch {
-            try {
-                refreshAllWidgets(context)
-            } finally {
-                pendingResult.finish()
-            }
+            refreshAllWidgets(context)
         }
     }
 
