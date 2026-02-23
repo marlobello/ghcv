@@ -44,7 +44,15 @@ class StepsWidgetReceiver : GlanceAppWidgetReceiver() {
         glanceId: androidx.glance.GlanceId
     ) {
         val healthManager = HealthConnectManager(context)
-        // Only check for the steps permission — not all 12 health permissions.
+
+        // Health Connect blocks reads from background contexts on Android 14+ unless
+        // READ_HEALTH_DATA_IN_BACKGROUND is granted. If it isn't, bail out and let the
+        // last data pushed by the foreground app (via StepsWidgetUpdater) remain visible.
+        if (!healthManager.hasBackgroundReadPermission()) {
+            Log.d("StepsWidget", "Background read not granted; retaining last foreground data")
+            return
+        }
+
         val hasPermission = healthManager.hasPermissionFor(StepsRecord::class)
 
         var currentSteps = 0L
