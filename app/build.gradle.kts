@@ -80,6 +80,10 @@ dependencies {
     implementation(libs.vico.compose.m3)
     implementation(libs.vico.core)
     
+    // Glance (home screen widgets)
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
+    
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
