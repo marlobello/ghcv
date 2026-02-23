@@ -29,6 +29,7 @@ import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
 import kotlin.reflect.KClass
+import com.marlobell.ghcv.widget.StepsWidgetUpdater
 
 data class CurrentHealthData(
     val steps: Long = 0,
@@ -609,7 +610,16 @@ class CurrentViewModel(
                 
                 // Categorize metrics for UI sections
                 categorizeMetrics(_healthData.value)
-                
+
+                // Push fresh steps data to the home-screen widget while we're in the foreground,
+                // since Health Connect blocks background reads without an extra permission.
+                StepsWidgetUpdater.update(
+                    context = healthConnectManager.getApplicationContext(),
+                    currentSteps = steps,
+                    sevenDayAvg = sevenDayAvgSteps,
+                    source = stepsSource
+                )
+
                 // On initial load, get a changes token for future differential syncs
                 if (isInitialLoad) {
                     try {

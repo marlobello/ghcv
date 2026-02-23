@@ -54,6 +54,8 @@ class HealthConnectManager(private val context: Context) {
 
     fun getClient(): HealthConnectClient = healthConnectClient
 
+    fun getApplicationContext(): Context = context.applicationContext
+
     /**
      * Checks and updates the availability status of Health Connect.
      * Should be called on app start and when returning from background.
