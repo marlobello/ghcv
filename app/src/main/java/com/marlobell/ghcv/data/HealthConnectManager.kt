@@ -32,7 +32,8 @@ class HealthConnectManager(private val context: Context) {
         private set
 
     companion object {
-        val PERMISSIONS = setOf(
+        // The 12 record-type permissions needed for foreground Health Connect reads.
+        private val RECORD_PERMISSIONS = setOf(
             HealthPermission.getReadPermission(StepsRecord::class),
             HealthPermission.getReadPermission(HeartRateRecord::class),
             HealthPermission.getReadPermission(SleepSessionRecord::class),
@@ -46,6 +47,12 @@ class HealthConnectManager(private val context: Context) {
             HealthPermission.getReadPermission(BloodGlucoseRecord::class),
             HealthPermission.getReadPermission(RespiratoryRateRecord::class)
         )
+
+        // Full permission set to request: record permissions + optional background read.
+        // Background read allows widgets/background jobs to read HC data without the app
+        // being in the foreground. It's optional — the app functions without it.
+        val PERMISSIONS: Set<String> = RECORD_PERMISSIONS +
+            setOf(HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND)
     }
 
     init {
@@ -53,6 +60,8 @@ class HealthConnectManager(private val context: Context) {
     }
 
     fun getClient(): HealthConnectClient = healthConnectClient
+
+    fun getApplicationContext(): Context = context.applicationContext
 
     /**
      * Checks and updates the availability status of Health Connect.
@@ -66,7 +75,7 @@ class HealthConnectManager(private val context: Context) {
     suspend fun hasAllPermissions(): Boolean {
         return try {
             val granted = healthConnectClient.permissionController.getGrantedPermissions()
-            granted.containsAll(PERMISSIONS)
+            granted.containsAll(RECORD_PERMISSIONS)  // background read is optional
         } catch (e: Exception) {
             Log.e("GHCV", "Error checking permissions", e)
             false
@@ -110,43 +119,17 @@ class HealthConnectManager(private val context: Context) {
     }
     
     /**
-     * Checks if background read permission is available as a feature and granted.
-     * Background read allows the app to read Health Connect data when not in foreground.
-     * Note: Experimental API usage disabled to allow compilation.
+     * Returns true if the READ_HEALTH_DATA_IN_BACKGROUND permission has been granted.
+     * When granted, Health Connect data can be read from background contexts (e.g. widgets).
      */
     suspend fun hasBackgroundReadPermission(): Boolean {
-        // Experimental HealthConnect API - disabled for now
-        // TODO: Enable when experimental APIs are stable
-        return false
-        
-        /* Original implementation - uses experimental APIs
         return try {
-            val featureAvailable = try {
-                val status = healthConnectClient.features.getFeatureStatus(
-                    HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_IN_BACKGROUND
-                )
-                status == HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
-            } catch (e: NoSuchMethodError) {
-                Log.d("GHCV", "Background read feature not available - API not supported")
-                return false
-            }
-            
-            if (!featureAvailable) {
-                Log.d("GHCV", "Background read feature not available on this device")
-                return false
-            }
-            
             val granted = healthConnectClient.permissionController.getGrantedPermissions()
-            val hasPermission = granted.contains(
-                HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND
-            )
-            Log.d("GHCV", "Background read permission granted: $hasPermission")
-            hasPermission
+            granted.contains(HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND)
         } catch (e: Exception) {
             Log.e("GHCV", "Error checking background read permission", e)
             false
         }
-        */
     }
     
     /**
