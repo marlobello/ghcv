@@ -425,7 +425,7 @@ class HealthConnectRepository(
         val result = mutableListOf<Pair<LocalDate, Long>>()
         val today = LocalDate.now()
 
-        for (i in 0 until days) {
+        for (i in 1..days) {
             val date = today.minusDays(i.toLong())
             val steps = getStepsForDate(date)
             result.add(date to steps)

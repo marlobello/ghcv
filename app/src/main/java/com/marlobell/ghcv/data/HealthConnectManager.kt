@@ -5,13 +5,11 @@ import android.content.Intent
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.health.connect.client.HealthConnectClient
-import androidx.health.connect.client.HealthConnectFeatures
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.*
 import androidx.health.connect.client.request.ChangesTokenRequest
 import com.marlobell.ghcv.data.model.ChangesMessage
-import androidx.core.net.toUri
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.io.IOException
@@ -133,32 +131,9 @@ class HealthConnectManager(private val context: Context) {
     }
     
     /**
-     * Checks if a specific Health Connect feature is available.
-     * @param feature One of the HealthConnectFeatures constants
-     * @return true if the feature is available on this device/HC version
-     * Note: Experimental API usage disabled to allow compilation.
+     * Triggers Health Connect registration by querying granted permissions.
+     * This registers the app with Health Connect so permissions can be managed.
      */
-    fun isFeatureAvailable(feature: Int): Boolean {
-        // Experimental HealthConnect API - disabled for now
-        // TODO: Enable when experimental APIs are stable
-        return false
-        
-        /* Original implementation - uses experimental APIs
-        return try {
-            val status = healthConnectClient.features.getFeatureStatus(feature)
-            val available = status == HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
-            Log.d("GHCV", "Feature $feature status: $status (available: $available)")
-            available
-        } catch (e: NoSuchMethodError) {
-            Log.d("GHCV", "Feature check not supported - API unavailable")
-            false
-        } catch (e: Exception) {
-            Log.e("GHCV", "Error checking feature availability", e)
-            false
-        }
-        */
-    }
-
     suspend fun triggerHealthConnectRegistration(): Boolean {
         return try {
             // Attempt to check permissions - this registers the app with HC
@@ -170,7 +145,7 @@ class HealthConnectManager(private val context: Context) {
             // This makes HC aware of what permissions we want
             try {
                 // This will likely fail but registers our intent
-                val contract = PermissionController.createRequestPermissionResultContract()
+                PermissionController.createRequestPermissionResultContract()
             } catch (e: Exception) {
                 Log.d("GHCV", "Contract creation failed (expected): ${e.message}")
             }
@@ -184,28 +159,6 @@ class HealthConnectManager(private val context: Context) {
 
     fun createPermissionRequestContract() = 
         PermissionController.createRequestPermissionResultContract()
-    
-    fun createManualPermissionIntent(): Intent {
-        val intent = Intent("android.health.connect.action.REQUEST_HEALTH_PERMISSIONS")
-        intent.setPackage("com.google.android.healthconnect.controller")
-        intent.putExtra("android.health.connect.extra.REQUESTED_PERMISSIONS", PERMISSIONS.toTypedArray())
-        intent.putExtra("android.intent.extra.PACKAGE_NAME", context.packageName)
-        return intent
-    }
-    
-    fun createHealthConnectSettingsIntent(): Intent {
-        // Open Android Settings for our app where HC permissions can be managed
-        val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-        intent.data = "package:${context.packageName}".toUri()
-        return intent
-    }
-    
-    fun createHealthConnectHomeIntent(): Intent {
-        // Open Health Connect main screen
-        val intent = Intent("android.health.connect.action.HEALTH_HOME_SETTINGS")
-        intent.setPackage("com.google.android.healthconnect.controller")
-        return intent
-    }
     
     fun openHealthConnectSettings(context: Context) {
         try {

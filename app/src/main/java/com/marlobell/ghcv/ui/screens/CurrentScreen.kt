@@ -41,7 +41,7 @@ fun CurrentScreen(
     navController: androidx.navigation.NavHostController,
     modifier: Modifier = Modifier
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     
     val repository = remember {
         HealthConnectRepository(healthConnectManager.getClient())

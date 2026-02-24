@@ -2,7 +2,6 @@ package com.marlobell.ghcv.ui.viewmodel
 
 import android.os.RemoteException
 import android.util.Log
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.*
 import androidx.lifecycle.ViewModel
@@ -588,7 +587,7 @@ class CurrentViewModel(
                 )
                 
                 // Categorize metrics for UI sections
-                categorizeMetrics(_healthData.value)
+                _healthData.value = categorizeMetrics(_healthData.value)
 
                 // Push fresh steps data to the home-screen widget while we're in the foreground,
                 // since Health Connect blocks background reads without an extra permission.
@@ -729,7 +728,7 @@ class CurrentViewModel(
      * Processes a list of changes from Health Connect.
      * Logs change information for debugging.
      */
-    private fun processChanges(changes: List<Change>) {
+    private fun processChanges(@Suppress("UNUSED_PARAMETER") changes: List<Change>) {
         // For now, any changes trigger a full refresh
         // In the future, we could be more granular and only refresh affected metrics
     }

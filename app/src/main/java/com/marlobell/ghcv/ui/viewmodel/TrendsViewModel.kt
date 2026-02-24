@@ -76,7 +76,7 @@ class TrendsViewModel(
                 
                 // Get heart rate trends (average per day)
                 val heartRateTrend = mutableListOf<Pair<LocalDate, Double>>()
-                for (i in 0 until period.days) {
+                for (i in 1..period.days) {
                     val date = LocalDate.now().minusDays(i.toLong())
                     val avgHr = repository.getAverageHeartRateForDate(date)
                     if (avgHr != null) {
@@ -86,7 +86,7 @@ class TrendsViewModel(
                 
                 // Get sleep trends (duration per night, with full stage data)
                 val sleepTrend = mutableListOf<Pair<LocalDate, SleepMetric?>>()
-                for (i in 0 until period.days) {
+                for (i in 1..period.days) {
                     val date = LocalDate.now().minusDays(i.toLong())
                     val (sleep, _) = repository.getSleepForDate(date)
                     if (sleep != null) {
