@@ -2,6 +2,7 @@ package com.marlobell.ghcv.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 
 /**
  * Manages storage and retrieval of Health Connect changes tokens.
@@ -20,7 +21,7 @@ class ChangesTokenStorage(context: Context) {
      * @param token The changes token to store
      */
     fun saveToken(recordType: String, token: String) {
-        prefs.edit().putString(TOKEN_PREFIX + recordType, token).apply()
+        prefs.edit { putString(TOKEN_PREFIX + recordType, token) }
     }
 
     /**
@@ -40,7 +41,7 @@ class ChangesTokenStorage(context: Context) {
      * @param recordType The class name of the record type
      */
     fun clearToken(recordType: String) {
-        prefs.edit().remove(TOKEN_PREFIX + recordType).apply()
+        prefs.edit { remove(TOKEN_PREFIX + recordType) }
     }
 
     /**
@@ -48,13 +49,11 @@ class ChangesTokenStorage(context: Context) {
      * Use when resetting the app or handling major permission changes.
      */
     fun clearAllTokens() {
-        val editor = prefs.edit()
-        prefs.all.keys.forEach { key ->
-            if (key.startsWith(TOKEN_PREFIX)) {
-                editor.remove(key)
+        prefs.edit {
+            prefs.all.keys.forEach { key ->
+                if (key.startsWith(TOKEN_PREFIX)) remove(key)
             }
         }
-        editor.apply()
     }
 
     /**

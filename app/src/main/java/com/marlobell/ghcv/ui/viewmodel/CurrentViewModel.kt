@@ -30,6 +30,7 @@ import java.time.Instant
 import java.time.LocalDate
 import kotlin.reflect.KClass
 import com.marlobell.ghcv.widget.StepsWidgetUpdater
+import com.marlobell.ghcv.widget.fetcher.StepsFetcher
 
 data class CurrentHealthData(
     val steps: Long = 0,
@@ -234,12 +235,7 @@ class CurrentViewModel(
             
             tryWithPermissionsCheck {
                 // Fetch main metrics with individual error handling and data sources
-                val (steps, stepsSource) = try {
-                    repository.getTodaySteps()
-                } catch (e: Exception) {
-                    Log.w("CurrentViewModel", "Failed to fetch steps", e)
-                    Pair(0L, null)
-                }
+                val (steps, sevenDayAvgSteps, stepsSource) = StepsFetcher.fetch(repository)
                 
                 val (heartRate, heartRateSource) = try {
                     repository.getLatestHeartRate()
@@ -286,23 +282,6 @@ class CurrentViewModel(
                 } catch (e: Exception) {
                     Log.w("CurrentViewModel", "Failed to fetch exercise sessions", e)
                     0
-                }
-                
-                // Calculate 7-day average steps
-                val sevenDayAvgSteps = try {
-                    val past7Days = (1..7).map { daysAgo ->
-                        val date = LocalDate.now().minusDays(daysAgo.toLong())
-                        try {
-                            repository.getStepsForDate(date)
-                        } catch (e: Exception) {
-                            0L
-                        }
-                    }
-                    val total = past7Days.sum()
-                    if (total > 0) total / 7 else 0L
-                } catch (e: Exception) {
-                    Log.w("CurrentViewModel", "Failed to fetch 7-day average steps", e)
-                    0L
                 }
                 
                 // 7-day average sleep
@@ -1026,6 +1005,7 @@ class CurrentViewModel(
         if (!isInitialLoad) {
             // Use differential sync for subsequent refreshes
             viewModelScope.launch(Dispatchers.IO) {
+                syncChanges()
             }
         } else {
             // First load or token storage not available

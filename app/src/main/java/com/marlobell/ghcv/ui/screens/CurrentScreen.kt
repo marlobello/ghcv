@@ -15,6 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.marlobell.ghcv.data.HealthConnectManager
 import com.marlobell.ghcv.data.repository.HealthConnectRepository
 import com.marlobell.ghcv.data.model.*
@@ -59,6 +62,20 @@ fun CurrentScreen(
     
     val healthData by viewModel.healthData.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+
+    // Pause auto-refresh when the screen is not visible; resume and refresh on return.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> viewModel.onAppForegrounded()
+                Lifecycle.Event.ON_PAUSE  -> viewModel.onAppBackgrounded()
+                else                      -> Unit
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
     
     // State for collapsible sections
     var permissionSectionExpanded by remember { mutableStateOf(false) }

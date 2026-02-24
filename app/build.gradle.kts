@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "com.marlobell.ghcv"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.marlobell.ghcv"
         minSdk = 34
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
@@ -73,12 +73,11 @@ dependencies {
     implementation(libs.androidx.health.connect)
     
     // Splash Screen
-    implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation(libs.androidx.splashscreen)
     
     // Charts
     implementation(libs.vico.compose)
     implementation(libs.vico.compose.m3)
-    implementation(libs.vico.core)
     
     // Glance (home screen widgets)
     implementation(libs.glance.appwidget)

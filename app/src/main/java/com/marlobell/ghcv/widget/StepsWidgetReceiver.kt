@@ -1,58 +1,26 @@
 package com.marlobell.ghcv.widget
 
-import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.util.Log
+import androidx.glance.GlanceId
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetManager
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.health.connect.client.records.StepsRecord
 import com.marlobell.ghcv.data.HealthConnectManager
 import com.marlobell.ghcv.data.repository.HealthConnectRepository
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.launch
-import java.time.LocalDate
+import com.marlobell.ghcv.widget.fetcher.StepsFetcher
 
-class StepsWidgetReceiver : GlanceAppWidgetReceiver() {
+class StepsWidgetReceiver : HealthWidgetReceiver() {
 
     override val glanceAppWidget: GlanceAppWidget = StepsWidget()
+    override val widgetClass: Class<out GlanceAppWidget> = StepsWidget::class.java
+    override val logTag = "StepsWidget"
 
-    private val coroutineScope = MainScope()
-
-    override fun onUpdate(
+    override suspend fun doUpdate(
         context: Context,
-        appWidgetManager: AppWidgetManager,
-        appWidgetIds: IntArray
+        healthManager: HealthConnectManager,
+        glanceId: GlanceId
     ) {
-        super.onUpdate(context, appWidgetManager, appWidgetIds)
-        coroutineScope.launch {
-            refreshAllWidgets(context)
-        }
-    }
-
-    private suspend fun refreshAllWidgets(context: Context) {
-        val manager = GlanceAppWidgetManager(context)
-        val glanceIds = manager.getGlanceIds(StepsWidget::class.java)
-        glanceIds.forEach { glanceId ->
-            updateStepsData(context, glanceId)
-        }
-    }
-
-    private suspend fun updateStepsData(
-        context: Context,
-        glanceId: androidx.glance.GlanceId
-    ) {
-        val healthManager = HealthConnectManager(context)
-
-        // Health Connect blocks reads from background contexts on Android 14+ unless
-        // READ_HEALTH_DATA_IN_BACKGROUND is granted. If it isn't, bail out and let the
-        // last data pushed by the foreground app (via StepsWidgetUpdater) remain visible.
-        if (!healthManager.hasBackgroundReadPermission()) {
-            Log.d("StepsWidget", "Background read not granted; retaining last foreground data")
-            return
-        }
-
         val hasPermission = healthManager.hasPermissionFor(StepsRecord::class)
 
         var currentSteps = 0L
@@ -61,28 +29,10 @@ class StepsWidgetReceiver : GlanceAppWidgetReceiver() {
 
         if (hasPermission) {
             val repo = HealthConnectRepository(healthManager.getClient())
-
-            try {
-                val (steps, source) = repo.getTodaySteps()
-                currentSteps = steps
-                stepsSource = source
-            } catch (e: Exception) {
-                Log.w("StepsWidget", "Failed to fetch today's steps", e)
-            }
-
-            try {
-                val dailySteps = (1..7).map { daysAgo ->
-                    try {
-                        repo.getStepsForDate(LocalDate.now().minusDays(daysAgo.toLong()))
-                    } catch (e: Exception) {
-                        0L
-                    }
-                }
-                val total = dailySteps.sum()
-                sevenDayAvg = if (total > 0L) total / 7L else 0L
-            } catch (e: Exception) {
-                Log.w("StepsWidget", "Failed to compute 7-day avg steps", e)
-            }
+            val (steps, avg, source) = StepsFetcher.fetch(repo)
+            currentSteps = steps
+            sevenDayAvg = avg
+            stepsSource = source
         }
 
         updateAppWidgetState(context, glanceId) { prefs ->

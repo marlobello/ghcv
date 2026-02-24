@@ -19,20 +19,18 @@ import com.marlobell.ghcv.data.repository.HealthConnectRepository
 import com.marlobell.ghcv.ui.viewmodel.TrendPeriod
 import com.marlobell.ghcv.ui.viewmodel.TrendsViewModel
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottomAxis
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStartAxis
+import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.compose.common.Fill
 import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
-import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
-import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
-import com.patrykandpatrick.vico.core.cartesian.layer.ColumnCartesianLayer
-import com.patrykandpatrick.vico.core.common.Defaults
-import com.patrykandpatrick.vico.core.common.shape.Shape
+import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.compose.cartesian.data.columnSeries
+import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
+import com.patrykandpatrick.vico.compose.cartesian.layer.ColumnCartesianLayer
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -296,12 +294,12 @@ fun StepsChart(
     CartesianChartHost(
         chart = rememberCartesianChart(
             rememberColumnCartesianLayer(),
-            startAxis = rememberStartAxis(),
-            bottomAxis = rememberBottomAxis(
-                valueFormatter = CartesianValueFormatter { value, _, _ ->
+            startAxis = VerticalAxis.rememberStart(),
+            bottomAxis = HorizontalAxis.rememberBottom(
+                valueFormatter = CartesianValueFormatter { _, value, _ ->
                     data.getOrNull(value.toInt())?.first?.format(dateFormatter) ?: ""
                 },
-                itemPlacer = HorizontalAxis.ItemPlacer.default(spacing = labelSpacing)
+                itemPlacer = HorizontalAxis.ItemPlacer.aligned(spacing = { labelSpacing })
             )
         ),
         modelProducer = modelProducer,
@@ -330,12 +328,12 @@ fun HeartRateTrendChart(
     CartesianChartHost(
         chart = rememberCartesianChart(
             rememberLineCartesianLayer(),
-            startAxis = rememberStartAxis(),
-            bottomAxis = rememberBottomAxis(
-                valueFormatter = CartesianValueFormatter { value, _, _ ->
+            startAxis = VerticalAxis.rememberStart(),
+            bottomAxis = HorizontalAxis.rememberBottom(
+                valueFormatter = CartesianValueFormatter { _, value, _ ->
                     data.getOrNull(value.toInt())?.first?.format(dateFormatter) ?: ""
                 },
-                itemPlacer = HorizontalAxis.ItemPlacer.default(spacing = labelSpacing)
+                itemPlacer = HorizontalAxis.ItemPlacer.aligned(spacing = { labelSpacing })
             )
         ),
         modelProducer = modelProducer,
@@ -386,13 +384,12 @@ fun SleepStagesChart(
         }
     }
 
-    val columnShape = Shape.rounded(Defaults.COLUMN_ROUNDNESS_PERCENT)
-    val columnThickness = Defaults.COLUMN_WIDTH.dp
-    val awakeCol   = rememberLineComponent(color = Color(0xFFE57373), thickness = columnThickness, shape = columnShape)
-    val lightCol   = rememberLineComponent(color = Color(0xFF64B5F6), thickness = columnThickness, shape = columnShape)
-    val deepCol    = rememberLineComponent(color = Color(0xFF1565C0), thickness = columnThickness, shape = columnShape)
-    val remCol     = rememberLineComponent(color = Color(0xFF9575CD), thickness = columnThickness, shape = columnShape)
-    val unknownCol = rememberLineComponent(color = Color(0xFFB0BEC5), thickness = columnThickness, shape = columnShape)
+    val columnThickness = 16.dp
+    val awakeCol   = rememberLineComponent(fill = Fill(Color(0xFFE57373)), thickness = columnThickness)
+    val lightCol   = rememberLineComponent(fill = Fill(Color(0xFF64B5F6)), thickness = columnThickness)
+    val deepCol    = rememberLineComponent(fill = Fill(Color(0xFF1565C0)), thickness = columnThickness)
+    val remCol     = rememberLineComponent(fill = Fill(Color(0xFF9575CD)), thickness = columnThickness)
+    val unknownCol = rememberLineComponent(fill = Fill(Color(0xFFB0BEC5)), thickness = columnThickness)
 
     val dateFormatter = rememberDateFormatter(data.size)
     val labelSpacing  = rememberLabelSpacing(data.size)
@@ -406,12 +403,12 @@ fun SleepStagesChart(
                     ),
                     mergeMode = { ColumnCartesianLayer.MergeMode.Stacked }
                 ),
-                startAxis = rememberStartAxis(),
-                bottomAxis = rememberBottomAxis(
-                    valueFormatter = CartesianValueFormatter { value, _, _ ->
+                startAxis = VerticalAxis.rememberStart(),
+                bottomAxis = HorizontalAxis.rememberBottom(
+                    valueFormatter = CartesianValueFormatter { _, value, _ ->
                         data.getOrNull(value.toInt())?.first?.format(dateFormatter) ?: ""
                     },
-                    itemPlacer = HorizontalAxis.ItemPlacer.default(spacing = labelSpacing)
+                    itemPlacer = HorizontalAxis.ItemPlacer.aligned(spacing = { labelSpacing })
                 )
             ),
             modelProducer = modelProducer,

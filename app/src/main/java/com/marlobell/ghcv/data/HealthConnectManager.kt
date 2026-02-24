@@ -11,9 +11,9 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.*
 import androidx.health.connect.client.request.ChangesTokenRequest
 import com.marlobell.ghcv.data.model.ChangesMessage
+import androidx.core.net.toUri
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
 import java.io.IOException
 import java.time.Instant
 import kotlin.reflect.KClass
@@ -196,7 +196,7 @@ class HealthConnectManager(private val context: Context) {
     fun createHealthConnectSettingsIntent(): Intent {
         // Open Android Settings for our app where HC permissions can be managed
         val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-        intent.data = android.net.Uri.parse("package:${context.packageName}")
+        intent.data = "package:${context.packageName}".toUri()
         return intent
     }
     
