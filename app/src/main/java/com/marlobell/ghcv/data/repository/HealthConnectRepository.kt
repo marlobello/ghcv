@@ -256,10 +256,14 @@ class HealthConnectRepository(
         val sleepSession = response.records.firstOrNull() ?: return Pair(null, null)
         val source = sleepSession.metadata.dataOrigin.packageName
         
-        val durationMinutes = ChronoUnit.MINUTES.between(
-            sleepSession.startTime,
-            sleepSession.endTime
-        )
+        // Exclude awake stages from total sleep duration
+        val durationMinutes = if (sleepSession.stages.isNotEmpty()) {
+            sleepSession.stages
+                .filter { it.stage != SleepSessionRecord.STAGE_TYPE_AWAKE }
+                .sumOf { ChronoUnit.MINUTES.between(it.startTime, it.endTime) }
+        } else {
+            ChronoUnit.MINUTES.between(sleepSession.startTime, sleepSession.endTime)
+        }
 
         val stages = sleepSession.stages.map { stage ->
             SleepStage(
@@ -279,22 +283,29 @@ class HealthConnectRepository(
 
     suspend fun getAverageSleepDuration(startTime: Instant, endTime: Instant): Long {
         return try {
-            val aggregateRequest = AggregateRequest(
-                metrics = setOf(SleepSessionRecord.SLEEP_DURATION_TOTAL),
-                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+            val response = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = SleepSessionRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+                )
             )
-            val result = healthConnectClient.aggregate(aggregateRequest)
-            val totalDuration = result[SleepSessionRecord.SLEEP_DURATION_TOTAL] ?: return 0L
-            
-            // Calculate days between for average
-            val daysBetween = ChronoUnit.DAYS.between(startTime, endTime)
-            if (daysBetween > 0) {
-                ChronoUnit.MINUTES.between(Instant.EPOCH, Instant.EPOCH.plus(totalDuration)) / daysBetween
-            } else {
-                0L
+            val sessions = response.records
+            if (sessions.isEmpty()) return 0L
+
+            // Exclude awake stages from each session's duration
+            val totalMinutes = sessions.sumOf { session ->
+                if (session.stages.isNotEmpty()) {
+                    session.stages
+                        .filter { it.stage != SleepSessionRecord.STAGE_TYPE_AWAKE }
+                        .sumOf { ChronoUnit.MINUTES.between(it.startTime, it.endTime) }
+                } else {
+                    ChronoUnit.MINUTES.between(session.startTime, session.endTime)
+                }
             }
+
+            totalMinutes / sessions.size
         } catch (e: Exception) {
-            Log.e("HealthConnectRepository", "Error aggregating sleep duration", e)
+            Log.e("HealthConnectRepository", "Error calculating average sleep duration", e)
             0L
         }
     }
