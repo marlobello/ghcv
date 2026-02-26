@@ -22,6 +22,7 @@ data class TrendData(
     val stepsTrend: List<Pair<LocalDate, Long>> = emptyList(),
     val heartRateTrend: List<Pair<LocalDate, Double>> = emptyList(),
     val sleepTrend: List<Pair<LocalDate, SleepMetric?>> = emptyList(),
+    val weightTrend: List<Pair<LocalDate, Double>> = emptyList(),
     val period: TrendPeriod = TrendPeriod.WEEK,
     val isLoading: Boolean = true,
     val error: String? = null,
@@ -50,6 +51,16 @@ data class TrendData(
         else 0
     val totalSleep: Long
         get() = sleepTrend.sumOf { it.second?.durationMinutes ?: 0L }
+    
+    // Statistics for weight
+    val avgWeight: Double
+        get() = if (weightTrend.isNotEmpty()) weightTrend.map { it.second }.average() else 0.0
+    val minWeight: Double
+        get() = weightTrend.minOfOrNull { it.second } ?: 0.0
+    val maxWeight: Double
+        get() = weightTrend.maxOfOrNull { it.second } ?: 0.0
+    val latestWeight: Double
+        get() = weightTrend.lastOrNull()?.second ?: 0.0
 }
 
 class TrendsViewModel(
@@ -94,10 +105,13 @@ class TrendsViewModel(
                     }
                 }
 
+                val weightTrend = repository.getWeightTrend(period.days)
+
                 _uiState.value = TrendData(
                     stepsTrend = stepsTrend,
                     heartRateTrend = heartRateTrend.reversed(),
                     sleepTrend = sleepTrend.reversed(),
+                    weightTrend = weightTrend,
                     period = period,
                     isLoading = false,
                     selectedMetric = _uiState.value.selectedMetric

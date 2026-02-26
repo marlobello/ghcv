@@ -40,7 +40,8 @@ enum class HealthMetricType(val displayName: String) {
     BODY_TEMPERATURE("Body Temperature"),
     OXYGEN_SATURATION("Oxygen Saturation"),
     RESTING_HEART_RATE("Resting Heart Rate"),
-    RESPIRATORY_RATE("Respiratory Rate")
+    RESPIRATORY_RATE("Respiratory Rate"),
+    WEIGHT("Weight")
 }
 
 /**

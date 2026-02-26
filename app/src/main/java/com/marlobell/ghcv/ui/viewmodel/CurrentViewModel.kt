@@ -85,7 +85,11 @@ data class CurrentHealthData(
     val bodyTemperatureComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
     val oxygenSaturationComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
     val restingHeartRateComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
-    val respiratoryRateComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null
+    val respiratoryRateComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
+    val weight: VitalStats<Double> = VitalStats(),
+    val weightSource: String? = null,
+    val oldestWeightIn30Days: Double? = null,
+    val weightComparison: com.marlobell.ghcv.ui.model.MetricComparison? = null
 ) {
     val stepsTrend: Int
         get() = if (sevenDayAvgSteps > 0) {
@@ -137,7 +141,8 @@ class CurrentViewModel(
         BodyTemperatureRecord::class,
         OxygenSaturationRecord::class,
         RestingHeartRateRecord::class,
-        RespiratoryRateRecord::class
+        RespiratoryRateRecord::class,
+        WeightRecord::class
     )
 
     init {
@@ -384,6 +389,16 @@ class CurrentViewModel(
                     metricName = "Respiratory rate"
                 )
 
+                val (weightList, weightSource) = repository.getTodayWeight()
+                val weightStats = buildVitalStats(
+                    latestMetric = repository.getLatestWeight(),
+                    todayReadings = weightList,
+                    valueExtractor = { it.pounds },
+                    latestValueExtractor = { it.pounds },
+                    latestTimestampExtractor = { it.timestamp },
+                    metricName = "Weight"
+                )
+
                 // Fetch 7-day averages for vitals comparisons
                 val sevenDayAvgBP = try {
                     repository.getSevenDayAverageBloodPressure()
@@ -424,6 +439,13 @@ class CurrentViewModel(
                     repository.getSevenDayAverageRespiratoryRate()
                 } catch (e: Exception) {
                     Log.w("CurrentViewModel", "Failed to fetch 7-day avg respiratory rate", e)
+                    null
+                }
+
+                val oldestWeightIn30Days = try {
+                    repository.getOldestWeightIn30Days()
+                } catch (e: Exception) {
+                    Log.w("CurrentViewModel", "Failed to fetch oldest weight in 30 days", e)
                     null
                 }
 
@@ -536,6 +558,25 @@ class CurrentViewModel(
                     )
                 }
 
+                val weightComp = weightStats.latest?.let { currentWeight ->
+                    oldestWeightIn30Days?.let { oldWeight ->
+                        val change = currentWeight - oldWeight
+                        val sign = if (change >= 0) "+" else ""
+                        val pct = if (oldWeight != 0.0) {
+                            val pctVal = (change / oldWeight * 100)
+                            "${sign}${String.format(java.util.Locale.US, "%.1f", pctVal)}%"
+                        } else null
+                        com.marlobell.ghcv.ui.model.MetricComparison(
+                            label = "30-days ago",
+                            value = String.format(java.util.Locale.US, "%.1f", oldWeight),
+                            unit = "lbs",
+                            difference = "${sign}${String.format(java.util.Locale.US, "%.1f", change)} lbs",
+                            percentage = pct,
+                            isPositive = null
+                        )
+                    }
+                }
+
                 _healthData.value = CurrentHealthData(
                     steps = steps,
                     stepsSource = stepsSource,
@@ -571,6 +612,9 @@ class CurrentViewModel(
                     restingHeartRateSource = restingHeartRateSource,
                     respiratoryRate = respiratoryRateStats,
                     respiratoryRateSource = respiratoryRateSource,
+                    weight = weightStats,
+                    weightSource = weightSource,
+                    oldestWeightIn30Days = oldestWeightIn30Days,
                     lastUpdated = Instant.now(),
                     // Comparisons
                     stepsComparison = stepsComp,
@@ -583,7 +627,8 @@ class CurrentViewModel(
                     bodyTemperatureComparison = bodyTempComp,
                     oxygenSaturationComparison = spo2Comp,
                     restingHeartRateComparison = restingHRComp,
-                    respiratoryRateComparison = respRateComp
+                    respiratoryRateComparison = respRateComp,
+                    weightComparison = weightComp
                 )
                 
                 // Categorize metrics for UI sections
@@ -753,7 +798,8 @@ class CurrentViewModel(
             BodyTemperatureRecord::class,
             OxygenSaturationRecord::class,
             RestingHeartRateRecord::class,
-            RespiratoryRateRecord::class
+            RespiratoryRateRecord::class,
+            WeightRecord::class
         ))
         
         // Helper function to get icon for metric type
@@ -769,6 +815,7 @@ class CurrentViewModel(
                 "oxygen_saturation" -> androidx.compose.material.icons.Icons.Filled.Air
                 "resting_heart_rate" -> androidx.compose.material.icons.Icons.Filled.MonitorHeart
                 "respiratory_rate" -> androidx.compose.material.icons.Icons.Filled.Air
+                "weight" -> androidx.compose.material.icons.Icons.Filled.MonitorWeight
                 else -> androidx.compose.material.icons.Icons.Filled.HealthAndSafety
             }
         }
@@ -989,6 +1036,28 @@ class CurrentViewModel(
                 id = "respiratory_rate",
                 displayName = "Respiratory Rate",
                 icon = getIconForMetric("respiratory_rate"),
+                availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_PERMISSION
+            ))
+        }
+        
+        // Categorize Weight
+        val hasWeightPermission = permissionStatus[WeightRecord::class] ?: false
+        if (hasWeightPermission) {
+            if (data.weight.hasData) {
+                // Has data
+            } else {
+                metricsNoData.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                    id = "weight",
+                    displayName = "Weight",
+                    icon = getIconForMetric("weight"),
+                    availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_DATA
+                ))
+            }
+        } else {
+            metricsNoPermission.add(com.marlobell.ghcv.ui.model.MetricInfo(
+                id = "weight",
+                displayName = "Weight",
+                icon = getIconForMetric("weight"),
                 availability = com.marlobell.ghcv.ui.model.MetricAvailability.NO_PERMISSION
             ))
         }

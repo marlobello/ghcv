@@ -10,6 +10,7 @@ import com.marlobell.ghcv.data.model.OxygenSaturationMetric
 import com.marlobell.ghcv.data.model.RespiratoryRateMetric
 import com.marlobell.ghcv.data.model.RestingHeartRateMetric
 import com.marlobell.ghcv.data.model.SleepMetric
+import com.marlobell.ghcv.data.model.WeightMetric
 import com.marlobell.ghcv.data.repository.HealthConnectRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +37,7 @@ data class HistoricalHealthData(
     val oxygenSaturationData: List<OxygenSaturationMetric> = emptyList(),
     val restingHeartRateData: List<RestingHeartRateMetric> = emptyList(),
     val respiratoryRateData: List<RespiratoryRateMetric> = emptyList(),
+    val weightData: List<WeightMetric> = emptyList(),
     val previousDaySteps: Long = 0,
     val isLoading: Boolean = true,
     val error: String? = null,
@@ -85,6 +87,7 @@ class HistoricalViewModel(
                 val oxygenSaturation = repository.getOxygenSaturationForDate(date)
                 val restingHeartRate = repository.getRestingHeartRateForDate(date)
                 val respiratoryRate = repository.getRespiratoryRateForDate(date)
+                val weightData = repository.getWeightForDate(date)
                 val previousDay = repository.getStepsForDate(date.minusDays(1))
 
                 _uiState.value = HistoricalHealthData(
@@ -105,6 +108,7 @@ class HistoricalViewModel(
                     oxygenSaturationData = oxygenSaturation,
                     restingHeartRateData = restingHeartRate,
                     respiratoryRateData = respiratoryRate,
+                    weightData = weightData,
                     previousDaySteps = previousDay,
                     isLoading = false,
                     expandedSections = _uiState.value.expandedSections

@@ -407,6 +407,37 @@ fun CurrentScreen(
                     }
                 }
                 
+                if (healthData.weight.hasData) {
+                    healthData.weight.latest?.let { w ->
+                        VitalsMetricCard(
+                            title = "Weight",
+                            value = String.format(Locale.US, "%.1f", w),
+                            unit = "lbs",
+                            icon = Icons.Filled.MonitorWeight,
+                            timestamp = healthData.weight.latestTimestamp,
+                            source = healthData.weightSource,
+                            timestampFormat = "MMM d, yyyy",
+                            timestampPrefix = "on",
+                            dailyStats = if (healthData.weight.readingCount > 1) {
+                                "Avg: ${String.format(Locale.US, "%.1f", healthData.weight.dailyAvg ?: 0.0)} | " +
+                                "Min: ${String.format(Locale.US, "%.1f", healthData.weight.dailyMin ?: 0.0)} | " +
+                                "Max: ${String.format(Locale.US, "%.1f", healthData.weight.dailyMax ?: 0.0)}"
+                            } else null,
+                            comparison = healthData.weightComparison,
+                            containerColor = MetabolicColors.containerColor(),
+                            contentColor = MetabolicColors.contentColor(),
+                            onClick = {
+                                navController.navigate(
+                                    Screen.Historical.createRoute(
+                                        date = LocalDate.now().toString(),
+                                        expandCard = MetricCardIds.WEIGHT
+                                    )
+                                )
+                            }
+                        )
+                    }
+                }
+                
                 // Distance Card
                 if (healthData.distance > 0) {
                     HealthMetricCard(
@@ -658,6 +689,8 @@ fun VitalsMetricCard(
     source: String? = null,
     dailyStats: String? = null,
     comparison: com.marlobell.ghcv.ui.model.MetricComparison? = null,
+    timestampFormat: String = "HH:mm",
+    timestampPrefix: String = "at",
     containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceVariant,
     contentColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
     onClick: (() -> Unit)? = null
@@ -712,11 +745,11 @@ fun VitalsMetricCard(
                 }
                 
                 timestamp?.let {
-                    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-                    val timeStr = it.atZone(ZoneId.systemDefault()).format(timeFormatter)
+                    val formatter = DateTimeFormatter.ofPattern(timestampFormat)
+                    val formattedTime = it.atZone(ZoneId.systemDefault()).format(formatter)
                     
                     val subtitle = buildString {
-                        append("at $timeStr")
+                        append("$timestampPrefix $formattedTime")
                         source?.let {
                             append(" • from ${DataSourceFormatter.format(it)}")
                         }

@@ -92,6 +92,14 @@ data class RespiratoryRateMetric(
     override val unit: String = "breaths/min"
 }
 
+data class WeightMetric(
+    override val timestamp: Instant,
+    val pounds: Double
+) : HealthMetric() {
+    override val value: Double = pounds
+    override val unit: String = "lbs"
+}
+
 data class VitalStats<T>(
     val latest: T? = null,
     val latestTimestamp: Instant? = null,

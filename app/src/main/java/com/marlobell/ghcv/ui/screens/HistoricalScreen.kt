@@ -493,6 +493,48 @@ fun HistoricalScreen(
                 }
             }
             
+            // Weight Card
+            if (uiState.weightData.isNotEmpty()) {
+                val latestWeight = uiState.weightData.maxByOrNull { it.timestamp }
+
+                ExpandableMetricCard(
+                    title = "Weight",
+                    icon = Icons.Filled.MonitorWeight,
+                    value = "${String.format(Locale.US, "%.1f", latestWeight?.pounds ?: 0.0)} lbs",
+                    subtitle = "${uiState.weightData.size} readings",
+                    isExpanded = uiState.expandedSections.contains(MetricCardIds.WEIGHT),
+                    onToggle = { viewModel.toggleSection(MetricCardIds.WEIGHT) },
+                    containerColor = MetabolicColors.containerColor(),
+                    contentColor = MetabolicColors.contentColor()
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Readings",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        uiState.weightData.sortedByDescending { it.timestamp }.forEach { reading ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "${String.format(Locale.US, "%.1f", reading.pounds)} lbs",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = reading.timestamp
+                                        .atZone(ZoneId.systemDefault())
+                                        .format(DateTimeFormatter.ofPattern("HH:mm")),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
             // Distance Card
             if (uiState.distance > 0) {
                 ExpandableMetricCard(

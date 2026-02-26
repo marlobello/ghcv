@@ -43,7 +43,8 @@ class HealthConnectManager(private val context: Context) {
             HealthPermission.getReadPermission(OxygenSaturationRecord::class),
             HealthPermission.getReadPermission(RestingHeartRateRecord::class),
             HealthPermission.getReadPermission(BloodGlucoseRecord::class),
-            HealthPermission.getReadPermission(RespiratoryRateRecord::class)
+            HealthPermission.getReadPermission(RespiratoryRateRecord::class),
+            HealthPermission.getReadPermission(WeightRecord::class)
         )
 
         // Full permission set to request: record permissions + optional background read.

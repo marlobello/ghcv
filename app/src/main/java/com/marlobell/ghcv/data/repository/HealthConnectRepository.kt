@@ -17,6 +17,7 @@ import com.marlobell.ghcv.data.model.RespiratoryRateMetric
 import com.marlobell.ghcv.data.model.RestingHeartRateMetric
 import com.marlobell.ghcv.data.model.SleepMetric
 import com.marlobell.ghcv.data.model.SleepStage
+import com.marlobell.ghcv.data.model.WeightMetric
 
 import java.io.IOException
 import java.time.Instant
@@ -35,6 +36,7 @@ class HealthConnectRepository(
             "com.google.android.apps.fitness", // Google Fit
             "android"                          // Android system
         )
+        private const val KG_TO_LBS = 2.20462
     }
 
     /**
@@ -991,5 +993,110 @@ class HealthConnectRepository(
                 durationMinutes = durationMinutes
             )
         }
+    }
+
+    /**
+     * Gets the most recent weight record from the last 30 days.
+     * Uses a wider window than other vitals since weight is typically logged less frequently.
+     */
+    suspend fun getLatestWeight(): WeightMetric? {
+        val endTime = Instant.now()
+        val startTime = endTime.minus(30, ChronoUnit.DAYS)
+
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = WeightRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+            )
+        )
+
+        val latest = response.records.maxByOrNull { it.time }
+        return latest?.let {
+            WeightMetric(
+                timestamp = it.time,
+                pounds = it.weight.inKilograms * KG_TO_LBS
+            )
+        }
+    }
+
+    suspend fun getTodayWeight(): Pair<List<WeightMetric>, String?> {
+        val timeRange = getTimeRangeForToday()
+
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = WeightRecord::class,
+                timeRangeFilter = timeRange
+            )
+        )
+
+        val metrics = response.records.map {
+            WeightMetric(
+                timestamp = it.time,
+                pounds = it.weight.inKilograms * KG_TO_LBS
+            )
+        }
+
+        val source = response.records.firstOrNull()?.metadata?.dataOrigin?.packageName
+        return Pair(metrics, source)
+    }
+
+    suspend fun getWeightForDate(date: LocalDate): List<WeightMetric> {
+        val timeRange = getTimeRangeForDate(date)
+
+        val response = healthConnectClient.readRecords(
+            ReadRecordsRequest(
+                recordType = WeightRecord::class,
+                timeRangeFilter = timeRange
+            )
+        )
+
+        return response.records.map {
+            WeightMetric(
+                timestamp = it.time,
+                pounds = it.weight.inKilograms * KG_TO_LBS
+            )
+        }
+    }
+
+    /**
+     * Gets the oldest weight record in the last 30 days (in lbs).
+     * Used to calculate 30-day weight change on the Current screen.
+     */
+    suspend fun getOldestWeightIn30Days(): Double? {
+        val endTime = Instant.now()
+        val startTime = endTime.minus(30, ChronoUnit.DAYS)
+
+        return try {
+            val response = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    recordType = WeightRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+                )
+            )
+
+            response.records.minByOrNull { it.time }?.let {
+                it.weight.inKilograms * KG_TO_LBS
+            }
+        } catch (e: Exception) {
+            Log.e("HealthConnect", "Error fetching oldest weight in 30 days", e)
+            null
+        }
+    }
+
+    /**
+     * Gets weight trend data for the given number of days.
+     * Returns the latest weight reading per day (since weight is typically logged once/day).
+     */
+    suspend fun getWeightTrend(days: Int): List<Pair<LocalDate, Double>> {
+        val result = mutableListOf<Pair<LocalDate, Double>>()
+        for (i in days downTo 1) {
+            val date = LocalDate.now().minusDays(i.toLong())
+            val readings = getWeightForDate(date)
+            val latest = readings.maxByOrNull { it.timestamp }
+            if (latest != null) {
+                result.add(date to latest.pounds)
+            }
+        }
+        return result
     }
 }

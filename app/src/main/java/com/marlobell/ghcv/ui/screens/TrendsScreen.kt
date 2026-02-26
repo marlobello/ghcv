@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.marlobell.ghcv.data.HealthConnectManager
 import com.marlobell.ghcv.data.model.SleepMetric
@@ -19,6 +20,8 @@ import com.marlobell.ghcv.data.repository.HealthConnectRepository
 import com.marlobell.ghcv.ui.viewmodel.TrendPeriod
 import com.marlobell.ghcv.ui.viewmodel.TrendsViewModel
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
+import com.patrykandpatrick.vico.compose.cartesian.VicoScrollState
+import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
@@ -68,9 +71,10 @@ fun TrendsScreen(
         )
         
         // Period selector
-        Row(
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             TrendPeriod.entries.forEach { period ->
                 FilterChip(
@@ -81,10 +85,16 @@ fun TrendsScreen(
             }
         }
         
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 4.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
+        
         // Metric selector
-        Row(
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             FilterChip(
                 selected = uiState.selectedMetric == "steps",
@@ -106,6 +116,12 @@ fun TrendsScreen(
                 onClick = { viewModel.selectMetric("sleep") },
                 label = { Text("Sleep") },
                 leadingIcon = { Icon(Icons.Filled.Bedtime, null, Modifier.size(18.dp)) }
+            )
+            FilterChip(
+                selected = uiState.selectedMetric == "weight",
+                onClick = { viewModel.selectMetric("weight") },
+                label = { Text("Weight") },
+                leadingIcon = { Icon(Icons.Filled.MonitorWeight, null, Modifier.size(18.dp)) }
             )
         }
         
@@ -131,7 +147,8 @@ fun TrendsScreen(
                             data = uiState.stepsTrend,
                             avgSteps = uiState.avgSteps,
                             totalSteps = uiState.totalSteps,
-                            maxSteps = uiState.maxSteps
+                            maxSteps = uiState.maxSteps,
+                            period = uiState.period
                         )
                     } else {
                         EmptyStateCard("No steps data available for this period")
@@ -143,7 +160,8 @@ fun TrendsScreen(
                             data = uiState.heartRateTrend,
                             avgHeartRate = uiState.avgHeartRate,
                             minHeartRate = uiState.minHeartRate,
-                            maxHeartRate = uiState.maxHeartRate
+                            maxHeartRate = uiState.maxHeartRate,
+                            period = uiState.period
                         )
                     } else {
                         EmptyStateCard("No heart rate data available for this period")
@@ -154,10 +172,25 @@ fun TrendsScreen(
                         SleepTrendCard(
                             data = uiState.sleepTrend,
                             avgSleep = uiState.avgSleep,
-                            totalSleep = uiState.totalSleep
+                            totalSleep = uiState.totalSleep,
+                            period = uiState.period
                         )
                     } else {
                         EmptyStateCard("No sleep data available for this period")
+                    }
+                }
+                "weight" -> {
+                    if (uiState.weightTrend.isNotEmpty()) {
+                        WeightTrendCard(
+                            data = uiState.weightTrend,
+                            avgWeight = uiState.avgWeight,
+                            minWeight = uiState.minWeight,
+                            maxWeight = uiState.maxWeight,
+                            latestWeight = uiState.latestWeight,
+                            period = uiState.period
+                        )
+                    } else {
+                        EmptyStateCard("No weight data available for this period")
                     }
                 }
             }
@@ -170,7 +203,8 @@ fun StepsTrendCard(
     data: List<Pair<LocalDate, Long>>,
     avgSteps: Long,
     totalSteps: Long,
-    maxSteps: Long
+    maxSteps: Long,
+    period: TrendPeriod
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -180,11 +214,13 @@ fun StepsTrendCard(
             )
             Spacer(modifier = Modifier.height(16.dp))
             
+            val chartHeight = rememberChartHeight(period)
             StepsChart(
                 data = data,
+                period = period,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(250.dp)
+                    .height(chartHeight)
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -206,7 +242,8 @@ fun HeartRateTrendCard(
     data: List<Pair<LocalDate, Double>>,
     avgHeartRate: Double,
     minHeartRate: Double,
-    maxHeartRate: Double
+    maxHeartRate: Double,
+    period: TrendPeriod
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -216,11 +253,13 @@ fun HeartRateTrendCard(
             )
             Spacer(modifier = Modifier.height(16.dp))
             
+            val chartHeight = rememberChartHeight(period)
             HeartRateTrendChart(
                 data = data,
+                period = period,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(250.dp)
+                    .height(chartHeight)
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -241,7 +280,8 @@ fun HeartRateTrendCard(
 fun SleepTrendCard(
     data: List<Pair<LocalDate, SleepMetric?>>,
     avgSleep: Long,
-    totalSleep: Long
+    totalSleep: Long,
+    period: TrendPeriod
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -251,9 +291,13 @@ fun SleepTrendCard(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
+            val chartHeight = rememberChartHeight(period)
             SleepStagesChart(
                 data = data,
-                modifier = Modifier.fillMaxWidth()
+                period = period,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(chartHeight)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -276,6 +320,7 @@ fun SleepTrendCard(
 @Composable
 fun StepsChart(
     data: List<Pair<LocalDate, Long>>,
+    period: TrendPeriod,
     modifier: Modifier = Modifier
 ) {
     val modelProducer = remember { CartesianChartModelProducer() }
@@ -288,7 +333,7 @@ fun StepsChart(
         }
     }
 
-    val dateFormatter = rememberDateFormatter(data.size)
+    val dateFormatter = rememberDateFormatter(period)
     val labelSpacing = rememberLabelSpacing(data.size)
 
     CartesianChartHost(
@@ -303,13 +348,15 @@ fun StepsChart(
             )
         ),
         modelProducer = modelProducer,
-        modifier = modifier
+        modifier = modifier,
+        scrollState = rememberVicoScrollState(scrollEnabled = false)
     )
 }
 
 @Composable
 fun HeartRateTrendChart(
     data: List<Pair<LocalDate, Double>>,
+    period: TrendPeriod,
     modifier: Modifier = Modifier
 ) {
     val modelProducer = remember { CartesianChartModelProducer() }
@@ -322,7 +369,7 @@ fun HeartRateTrendChart(
         }
     }
 
-    val dateFormatter = rememberDateFormatter(data.size)
+    val dateFormatter = rememberDateFormatter(period)
     val labelSpacing = rememberLabelSpacing(data.size)
 
     CartesianChartHost(
@@ -337,13 +384,15 @@ fun HeartRateTrendChart(
             )
         ),
         modelProducer = modelProducer,
-        modifier = modifier
+        modifier = modifier,
+        scrollState = rememberVicoScrollState(scrollEnabled = false)
     )
 }
 
 @Composable
 fun SleepStagesChart(
     data: List<Pair<LocalDate, SleepMetric?>>,
+    period: TrendPeriod,
     modifier: Modifier = Modifier
 ) {
     val modelProducer = remember { CartesianChartModelProducer() }
@@ -391,7 +440,7 @@ fun SleepStagesChart(
     val remCol     = rememberLineComponent(fill = Fill(Color(0xFF9575CD)), thickness = columnThickness)
     val unknownCol = rememberLineComponent(fill = Fill(Color(0xFFB0BEC5)), thickness = columnThickness)
 
-    val dateFormatter = rememberDateFormatter(data.size)
+    val dateFormatter = rememberDateFormatter(period)
     val labelSpacing  = rememberLabelSpacing(data.size)
 
     Column(modifier = modifier) {
@@ -414,7 +463,8 @@ fun SleepStagesChart(
             modelProducer = modelProducer,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(220.dp)
+                .weight(1f),
+            scrollState = rememberVicoScrollState(scrollEnabled = false)
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -448,10 +498,12 @@ private fun SleepStageLegendItem(color: Color, label: String) {
 }
 
 @Composable
-private fun rememberDateFormatter(dataSize: Int): DateTimeFormatter {
-    return remember(dataSize) {
-        if (dataSize <= 14) DateTimeFormatter.ofPattern("EEE")
-        else DateTimeFormatter.ofPattern("MMM d")
+private fun rememberDateFormatter(period: TrendPeriod): DateTimeFormatter {
+    return remember(period) {
+        when (period) {
+            TrendPeriod.WEEK, TrendPeriod.TWO_WEEKS -> DateTimeFormatter.ofPattern("EEE")
+            TrendPeriod.MONTH, TrendPeriod.THREE_MONTHS -> DateTimeFormatter.ofPattern("M/d")
+        }
     }
 }
 
@@ -464,7 +516,19 @@ private fun rememberLabelSpacing(dataSize: Int): Int {
 }
 
 @Composable
-fun TrendStatItem(label: String, value: String) {
+private fun rememberChartHeight(period: TrendPeriod): Dp {
+    return when (period) {
+        TrendPeriod.WEEK -> 250.dp
+        TrendPeriod.TWO_WEEKS -> 220.dp
+        TrendPeriod.MONTH -> 180.dp
+        TrendPeriod.THREE_MONTHS -> 150.dp
+    }
+}
+
+@Composable
+fun TrendStatItem(label: String, value: String, itemCount: Int = 3) {
+    val valueStyle = if (itemCount >= 4) MaterialTheme.typography.titleMedium
+                     else MaterialTheme.typography.titleLarge
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = label,
@@ -473,7 +537,7 @@ fun TrendStatItem(label: String, value: String) {
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.titleLarge
+            style = valueStyle
         )
     }
 }
@@ -508,4 +572,100 @@ fun EmptyStateCard(message: String) {
             }
         }
     }
+}
+
+@Composable
+fun WeightTrendCard(
+    data: List<Pair<LocalDate, Double>>,
+    avgWeight: Double,
+    minWeight: Double,
+    maxWeight: Double,
+    latestWeight: Double,
+    period: TrendPeriod
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Weight Trend",
+                style = MaterialTheme.typography.titleLarge
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            val chartHeight = rememberChartHeight(period)
+            WeightChart(
+                data = data,
+                period = period,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(chartHeight)
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                TrendStatItem("Min", "${String.format(java.util.Locale.US, "%.1f", minWeight)} lbs", itemCount = 4)
+                TrendStatItem("Avg", "${String.format(java.util.Locale.US, "%.1f", avgWeight)} lbs", itemCount = 4)
+                TrendStatItem("Max", "${String.format(java.util.Locale.US, "%.1f", maxWeight)} lbs", itemCount = 4)
+                TrendStatItem("Latest", "${String.format(java.util.Locale.US, "%.1f", latestWeight)} lbs", itemCount = 4)
+            }
+        }
+    }
+}
+
+@Composable
+fun WeightChart(
+    data: List<Pair<LocalDate, Double>>,
+    period: TrendPeriod,
+    modifier: Modifier = Modifier
+) {
+    val modelProducer = remember { CartesianChartModelProducer() }
+
+    LaunchedEffect(data) {
+        val xValues = data.indices.map { it.toFloat() }
+        val yValues = data.map { it.second.toFloat() }
+        modelProducer.runTransaction {
+            lineSeries { series(xValues, yValues) }
+        }
+    }
+
+    val dateFormatter = rememberDateFormatter(period)
+    val labelSpacing = rememberLabelSpacing(data.size)
+
+    // Compute a tight y-axis range with padding so subtle weight changes are visible
+    val minWeight = data.minOfOrNull { it.second } ?: 0.0
+    val maxWeight = data.maxOfOrNull { it.second } ?: 0.0
+    val range = maxWeight - minWeight
+    val padding = if (range < 1.0) 2.0 else range * 0.3
+    // Round to whole numbers for clean axis labels
+    val yMin = kotlin.math.floor(minWeight - padding).coerceAtLeast(0.0)
+    val yMax = kotlin.math.ceil(maxWeight + padding)
+
+    CartesianChartHost(
+        chart = rememberCartesianChart(
+            rememberLineCartesianLayer(
+                rangeProvider = com.patrykandpatrick.vico.compose.cartesian.data.CartesianLayerRangeProvider.fixed(
+                    minY = yMin,
+                    maxY = yMax
+                )
+            ),
+            startAxis = VerticalAxis.rememberStart(
+                valueFormatter = CartesianValueFormatter { _, value, _ ->
+                    String.format(java.util.Locale.US, "%.0f", value)
+                },
+                itemPlacer = VerticalAxis.ItemPlacer.step(step = { 1.0 })
+            ),
+            bottomAxis = HorizontalAxis.rememberBottom(
+                valueFormatter = CartesianValueFormatter { _, value, _ ->
+                    data.getOrNull(value.toInt())?.first?.format(dateFormatter) ?: ""
+                },
+                itemPlacer = HorizontalAxis.ItemPlacer.aligned(spacing = { labelSpacing })
+            )
+        ),
+        modelProducer = modelProducer,
+        modifier = modifier,
+        scrollState = rememberVicoScrollState(scrollEnabled = false)
+    )
 }

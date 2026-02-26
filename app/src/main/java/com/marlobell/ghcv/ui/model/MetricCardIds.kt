@@ -17,4 +17,5 @@ object MetricCardIds {
     const val OXYGEN_SATURATION = "oxygen"
     const val RESTING_HEART_RATE = "restinghr"
     const val RESPIRATORY_RATE = "respiratory"
+    const val WEIGHT = "weight"
 }
